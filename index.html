@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>四六级分数诊断台</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0A1016;
+    --panel: #101922;
+    --line: #22303C;
+    --line-soft: #1A2530;
+    --paper: #E9E4D6;
+    --dim: #93A1AA;
+    --faint: #788892;
+    --brass: #D8A94E;
+    --brass-hi: #EAC57E;
+    --brass-soft: rgba(216, 169, 78, .12);
+    --rust: #CE7B64;
+    --teal: #6FB3A0;
+    --serif: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    --mono: "SF Mono", ui-monospace, "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1100px 520px at 16% -10%, rgba(216, 169, 78, .07), transparent 62%),
+      repeating-linear-gradient(0deg, transparent 0 31px, rgba(233, 228, 214, .016) 31px 32px),
+      repeating-linear-gradient(90deg, transparent 0 31px, rgba(233, 228, 214, .016) 31px 32px),
+      var(--bg);
+    color: var(--paper);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  p, h1, h2, h3, ol { margin: 0; }
+  /* Re-apply paragraph spacing inside content blocks only */
+  .score-note + p, .panel-hint + p { margin-top: 8px; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  h1, h2, h3 { font-weight: 600; }
+  ::selection { background: rgba(216, 169, 78, .35); }
+  :focus-visible { outline: 2px solid var(--brass-hi); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  .page { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 24px; padding: 30px 0 20px; border-bottom: 1px solid var(--line-soft);
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .22em;
+    color: var(--faint); text-transform: uppercase;
+  }
+  h1 { font-family: var(--serif); font-size: 30px; letter-spacing: .03em; margin-top: 6px; }
+  .controls { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .exam-switch {
+    display: inline-flex; padding: 3px; gap: 2px;
+    border: 1px solid var(--line); border-radius: 8px; background: rgba(16, 25, 34, .7);
+  }
+  .exam-switch button {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .08em;
+    padding: 6px 15px; border-radius: 6px; color: var(--dim);
+    transition: background-color .18s ease, color .18s ease;
+  }
+  .exam-switch button:hover { color: var(--paper); }
+  .exam-switch button[aria-pressed="true"] { background: var(--brass); color: #181207; font-weight: 600; }
+  .dateline { font-family: var(--mono); font-size: 10.5px; color: var(--faint); letter-spacing: .08em; }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 34px 0 8px; }
+  .hero-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+  .label { font-size: 11.5px; letter-spacing: .12em; color: var(--dim); }
+  .score {
+    font-family: var(--mono); font-size: clamp(52px, 7vw, 74px);
+    line-height: 1; letter-spacing: -.03em; margin-top: 6px; font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .score-den { font-size: 16px; color: var(--faint); letter-spacing: 0; margin-left: 10px; }
+  .score-note { font-size: 12.5px; margin-top: 10px; color: var(--dim); font-family: var(--mono); }
+  .score-note.bad { color: var(--rust); }
+  .score-note.good { color: var(--teal); }
+  .coverage { text-align: right; font-family: var(--mono); }
+  .coverage .cov-value { font-size: 15px; color: var(--paper); margin-top: 4px; }
+  .coverage .cov-note { font-size: 10.5px; color: var(--faint); margin-top: 3px; }
+
+  .ruler-wrap { margin-top: 28px; overflow-x: auto; padding-bottom: 6px; }
+  .ruler { min-width: 680px; }
+  .scale { position: relative; height: 24px; }
+  .tick { position: absolute; bottom: 0; width: 1px; height: 5px; background: var(--line); }
+  .tick.major { height: 8px; background: #33434F; }
+  .tick-label {
+    position: absolute; bottom: 11px; left: 50%; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 9.5px; color: var(--faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .tick:first-child .tick-label { left: 0; transform: none; }
+  .tick.end .tick-label { left: auto; right: 0; transform: none; }
+
+  .bar { display: flex; margin-top: 2px; }
+  .seg { min-width: 0; padding: 0 5px; }
+  .seg:first-child { padding-left: 0; }
+  .seg:last-child { padding-right: 0; }
+  .seg-inner { min-width: 0; }
+  .seg-label { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding: 0 1px 6px; }
+  .seg-name { font-size: 12.5px; letter-spacing: .08em; white-space: nowrap; }
+  .seg-w { font-family: var(--mono); font-size: 10px; color: var(--faint); white-space: nowrap; }
+  .seg-track {
+    position: relative; height: 46px; background: #182430;
+    border-radius: 3px; overflow: visible;
+  }
+  .seg-fill {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+    background: linear-gradient(180deg, #E7C27B 0%, #D3A146 55%, #BC8A38 100%);
+    border-radius: 3px;
+    transition: width .45s cubic-bezier(.25, .7, .3, 1);
+  }
+  .seg-risk {
+    position: absolute; top: 0; bottom: 0; left: 0; width: 0;
+    background-image: repeating-linear-gradient(135deg,
+      rgba(196, 112, 90, .42) 0 3px, rgba(196, 112, 90, .10) 3px 7px);
+    transition: width .45s cubic-bezier(.25, .7, .3, 1), left .45s cubic-bezier(.25, .7, .3, 1);
+  }
+  .seg-marker {
+    position: absolute; top: -5px; bottom: -5px; width: 0;
+    border-left: 1px dashed rgba(233, 228, 214, .85); opacity: .9;
+    transition: left .45s cubic-bezier(.25, .7, .3, 1);
+  }
+  .seg-marker::before {
+    content: ""; position: absolute; top: -3px; left: -2.5px;
+    width: 5px; height: 5px; border-radius: 50%; background: var(--paper);
+    box-shadow: 0 0 0 1px rgba(10, 16, 22, .55);
+  }
+  .seg-pts { display: flex; align-items: baseline; gap: 4px; padding-top: 7px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .seg-pts .earned { font-size: 16px; color: var(--paper); }
+  .seg-pts .den { font-size: 10px; color: var(--faint); }
+  .ruler-legend { margin-top: 10px; font-size: 11px; color: var(--faint); letter-spacing: .02em; }
+
+  /* ---------- columns ---------- */
+  .columns {
+    display: grid; grid-template-columns: 1.05fr .95fr; gap: 24px;
+    margin-top: 34px; align-items: start;
+  }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line-soft);
+    border-radius: 12px; padding: 24px;
+  }
+  .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .panel-head h2 { font-family: var(--serif); font-size: 21px; letter-spacing: .02em; margin-top: 7px; }
+  .panel-actions { display: flex; gap: 8px; }
+  .panel-hint { margin-top: 10px; font-size: 12px; color: var(--faint); line-height: 1.7; }
+
+  .btn {
+    border: 1px solid var(--line); border-radius: 7px;
+    padding: 6px 12px; font-size: 12px; color: var(--dim);
+    transition: border-color .18s ease, color .18s ease, background-color .18s ease;
+  }
+  .btn:hover { border-color: var(--brass); color: var(--paper); }
+  .btn.accent { background: var(--brass); border-color: var(--brass); color: #181207; font-weight: 600; }
+  .btn.accent:hover { background: var(--brass-hi); color: #181207; }
+
+  /* ---------- entry ---------- */
+  .entry-section { margin-top: 22px; }
+  .entry-section + .entry-section { padding-top: 16px; border-top: 1px dashed var(--line-soft); }
+  .entry-sec-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .entry-sec-head h3 { font-family: var(--serif); font-size: 18px; }
+  .entry-sec-head .en {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em;
+    color: var(--faint); text-transform: uppercase;
+  }
+  .entry-sec-head .meta {
+    margin-left: auto; font-family: var(--mono); font-size: 10.5px;
+    color: var(--faint); font-variant-numeric: tabular-nums;
+  }
+  .rows { margin-top: 4px; }
+  .row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto 52px;
+    align-items: center; gap: 10px;
+    padding: 9px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .row:last-child { border-bottom: 0; }
+  .row-name { font-size: 13.5px; color: var(--paper); display: flex; align-items: baseline; gap: 8px; }
+  .row-name .q { font-family: var(--mono); font-size: 10px; color: var(--faint); white-space: nowrap; }
+  .row-input { display: flex; align-items: baseline; gap: 4px; }
+  .row-input input {
+    width: 56px; padding: 1px 4px; text-align: right;
+    font-family: var(--mono); font-size: 16px; color: var(--paper);
+    background: transparent; border: 0; border-bottom: 1px solid var(--line);
+    border-radius: 0; font-variant-numeric: tabular-nums;
+  }
+  .row-input input::placeholder { color: var(--faint); }
+  .row-input input:hover { border-bottom-color: var(--faint); }
+  .row-input input:focus-visible { outline: none; border-bottom-color: var(--brass-hi); }
+  .row-input .of { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+  .pill {
+    font-family: var(--mono); font-size: 11px; text-align: right;
+    color: var(--faint); font-variant-numeric: tabular-nums;
+  }
+  .pill.bad { color: var(--rust); }
+  .pill.good { color: var(--teal); }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+  /* ---------- diagnosis ---------- */
+  .gap-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 16px; }
+  .gap {
+    border: 1px solid var(--line-soft); border-radius: 8px;
+    padding: 8px 10px; display: flex; flex-direction: column; gap: 2px;
+  }
+  .gap-name { font-size: 10.5px; color: var(--faint); letter-spacing: .08em; }
+  .gap-val { font-family: var(--mono); font-size: 13.5px; color: var(--paper); font-variant-numeric: tabular-nums; }
+  .gap-val.neg { color: var(--rust); }
+  .gap-val.pos { color: var(--teal); }
+  .gap-val.none { color: var(--faint); }
+  .gap-sub { font-size: 9.5px; color: var(--faint); }
+
+  .rx-list { list-style: none; padding: 0; margin-top: 10px; }
+  .rx {
+    display: grid; grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .rx:last-child { border-bottom: 0; }
+  .rx-rank { font-family: var(--mono); font-size: 11px; color: var(--faint); padding-top: 4px; }
+  .rx-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .rx-title h3 { font-family: var(--serif); font-size: 18px; }
+  .tag {
+    font-family: var(--mono); font-size: 9.5px; color: var(--dim);
+    border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px;
+  }
+  .rx-meta { margin-top: 5px; font-size: 12px; color: var(--dim); display: flex; gap: 7px; font-variant-numeric: tabular-nums; }
+  .rx-meta .arrow { color: var(--faint); }
+  .rx-tip { margin-top: 6px; font-size: 12.5px; line-height: 1.7; color: #A9B4BB; max-width: 46ch; }
+  .rx-gains { display: flex; gap: 16px; align-items: flex-start; }
+  .rx-gain { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; padding-top: 2px; min-width: 46px; }
+  .rx-gain strong { font-family: var(--mono); font-size: 18px; font-weight: 500; color: var(--brass-hi); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .rx-gain.impact strong { color: var(--paper); }
+  .rx-gain span { font-size: 9.5px; color: var(--faint); white-space: nowrap; }
+
+  .rest { margin-top: 10px; font-size: 11.5px; color: var(--faint); }
+  .met { margin-top: 12px; font-size: 11.5px; color: var(--faint); line-height: 1.7; }
+  .whatif {
+    margin-top: 16px; padding: 12px 14px;
+    border: 1px dashed rgba(216, 169, 78, .45); border-radius: 8px;
+    background: var(--brass-soft); font-size: 12.5px; line-height: 1.7; color: var(--paper);
+  }
+  .whatif strong { font-family: var(--mono); font-size: 15px; color: var(--brass-hi); font-weight: 500; }
+  .whatif .up { font-family: var(--mono); color: var(--brass-hi); }
+
+  .empty { padding: 40px 12px; text-align: center; }
+  .empty-title { font-family: var(--serif); font-size: 18px; }
+  .empty .dim { margin-top: 8px; font-size: 12.5px; color: var(--faint); line-height: 1.7; }
+  .empty .btn { margin-top: 16px; }
+  .all-met { margin-top: 18px; padding: 16px; border: 1px solid var(--line-soft); border-radius: 8px; }
+  .all-met p { font-family: var(--serif); font-size: 16px; }
+  .all-met .dim { font-family: var(--sans); font-size: 12px; color: var(--faint); margin-top: 6px; }
+
+  /* ---------- footer ---------- */
+  .footer {
+    margin-top: 40px; padding: 18px 0 36px;
+    border-top: 1px solid var(--line-soft);
+    display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+    font-size: 11.5px; color: var(--faint); line-height: 1.7;
+  }
+  .footer code {
+    font-family: var(--mono); font-size: 10.5px; color: var(--brass);
+    background: var(--brass-soft); padding: 1px 5px; border-radius: 3px;
+  }
+  .config-warning { color: var(--rust); }
+
+  @media (max-width: 920px) {
+    .columns { grid-template-columns: 1fr; }
+    .topbar { align-items: flex-start; flex-direction: column; gap: 16px; }
+    h1 { font-size: 26px; }
+    .hero-head { align-items: flex-start; }
+    .coverage { text-align: left; }
+  }
+  @media (max-width: 640px) {
+    .page { padding: 0 18px; }
+    .panel { padding: 18px; }
+    .gap-grid { grid-template-columns: repeat(2, 1fr); }
+    .rx { grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; }
+    .rx-gains { flex-direction: column; align-items: flex-end; gap: 6px; }
+    .rx-gain { min-width: 58px; }
+    .rx-gain strong { font-size: 16px; }
+    .score-den { font-size: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <div class="brand">
+      <p class="eyebrow">CET Score Clinic · 710</p>
+      <h1>四六级分数诊断台</h1>
+    </div>
+    <div class="controls">
+      <div class="exam-switch" role="group" aria-label="选择考试类型">
+        <button type="button" data-exam="cet4" aria-pressed="true">CET-4</button>
+        <button type="button" data-exam="cet6" aria-pressed="false">CET-6</button>
+      </div>
+      <p class="dateline">诊断日期 <span id="dateline"></span></p>
+    </div>
+  </header>
+
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-head">
+      <div>
+        <p class="eyebrow" id="hero-eyebrow">CET-4 · 整卷 710 分</p>
+        <p class="label" id="hero-title">综合估分</p>
+        <p class="score"><span id="score-value">—</span><span class="score-den">/ 710</span></p>
+        <p class="score-note" id="score-note" aria-live="polite">填入分数后生成诊断</p>
+      </div>
+      <div class="coverage">
+        <p class="label">录入覆盖</p>
+        <p class="cov-value" id="coverage-value">0 / 8</p>
+        <p class="cov-note" id="coverage-note">按 0% 权重折算</p>
+      </div>
+    </div>
+
+    <div class="ruler-wrap">
+      <div class="ruler">
+        <div class="scale" id="scale"></div>
+        <div class="bar" id="ruler-bar"></div>
+      </div>
+      <p class="ruler-legend">实色为已得分数 · 斜纹为目标缺口 · 竖虚线为目标位置</p>
+    </div>
+  </section>
+
+  <main class="columns">
+    <section class="panel" aria-labelledby="entry-title">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">01 · Input</p>
+          <h2 id="entry-title">本次模考分数</h2>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="btn" id="sample-btn">载入示例</button>
+          <button type="button" class="btn" id="clear-btn">清空</button>
+        </div>
+      </div>
+      <p class="panel-hint">客观题填答对题数，写作与翻译填 15 分制得分；留空的题型不参与诊断。按 Enter 跳到下一项。</p>
+      <div id="entry-body"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="diag-title">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">02 · Diagnosis</p>
+          <h2 id="diag-title">优先补哪里</h2>
+        </div>
+      </div>
+      <p class="panel-hint">按“补到目标能拿回多少分”排序，而不是按百分比排序。左列为卷面可追回分，右列为折算到综合估分的影响（可追回 ÷ 已录入权重）。</p>
+      <div id="diag-body"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p class="config-note">权重、目标正确率和训练建议都在源码顶部的 <code>CONFIG</code> 里；改数值即可，不用动逻辑。各部分权重合计应为 100%，题型权重合计应等于所属部分。</p>
+    <p class="config-warning" id="config-warning" hidden></p>
+  </footer>
+
+</div>
+
+<script>
+/* ===== ENGINE START ===== */
+/* ============================================================
+   权重表 —— 想调数值只改这一块，逻辑不用动
+
+   total:   整卷总分
+   weight:  该部分 / 题型在整卷中的占比（小数），题型相加应等于所属部分
+   max:     该题型满分（客观题 = 题数，写作 / 翻译 = 15 分制）
+   target:  目标得分率（0–1）。“可追回分数”= (target − 实际得分率) × 权重 × 总分
+   tip:     该题型进入处方时显示的训练建议
+   sample:  “载入示例”按钮填入的分数
+   ============================================================ */
+
+const CONFIG = {
+  total: 710,
+  exams: {
+    cet4: {
+      label: "CET-4",
+      sample: {
+        "c4-news": 4, "c4-conv": 5, "c4-passage": 6,
+        "c4-cloze": 5, "c4-match": 7, "c4-careful": 7,
+        "c4-writing": 10, "c4-trans": 7
+      },
+      sections: [
+        {
+          id: "listening", name: "听力", en: "Listening", weight: 0.35,
+          types: [
+            { id: "c4-news", name: "短篇新闻", max: 7, weight: 0.07, target: 0.75,
+              tip: "新闻听力先看题干，圈出人名、数字和转折词；首句常带主旨。错题只回放答案句，不整段重听。" },
+            { id: "c4-conv", name: "长对话", max: 8, weight: 0.08, target: 0.75,
+              tip: "预读选项判断场景，重点抓第二个说话人的回答；对话题目顺序与原文一致，按顺序定位。" },
+            { id: "c4-passage", name: "听力篇章", max: 10, weight: 0.20, target: 0.75,
+              tip: "篇章题考结构：开头结论、中间例证、结尾态度。每篇错 2 题以上就整篇精听一遍。" }
+          ]
+        },
+        {
+          id: "reading", name: "阅读", en: "Reading", weight: 0.35,
+          types: [
+            { id: "c4-cloze", name: "选词填空", max: 10, weight: 0.05, target: 0.85,
+              tip: "先标 15 个候选词的词性，再按空定词性、按句定词义；允许 5 个干扰项，别在生词上纠缠。" },
+            { id: "c4-match", name: "长篇阅读", max: 10, weight: 0.10, target: 0.85,
+              tip: "先读题干，抓独特名词和数字回文定位，优先匹配段落首尾句；限时 12 分钟。" },
+            { id: "c4-careful", name: "仔细阅读", max: 10, weight: 0.20, target: 0.85,
+              tip: "题干定位加同义替换识别是核心。每道错题标注原因：定位错、没看出替换，还是被干扰项带偏。" }
+          ]
+        },
+        {
+          id: "writing", name: "写作", en: "Writing", weight: 0.15,
+          types: [
+            { id: "c4-writing", name: "写作", max: 15, weight: 0.15, target: 0.75,
+              tip: "背熟三段式骨架和 3 个热点话题素材；每周限时写 1 篇，对照范文只改结构和连接词。" }
+          ]
+        },
+        {
+          id: "translation", name: "翻译", en: "Translation", weight: 0.15,
+          types: [
+            { id: "c4-trans", name: "翻译", max: 15, weight: 0.15, target: 0.70,
+              tip: "先拆主干再补修饰，文化词提前整理成固定译法；每周精译 1 段，对照参考译文标出差异。" }
+          ]
+        }
+      ]
+    },
+
+    cet6: {
+      label: "CET-6",
+      sample: {
+        "c6-conv": 5, "c6-passage": 4, "c6-lecture": 6,
+        "c6-cloze": 5, "c6-match": 7, "c6-careful": 6,
+        "c6-writing": 10, "c6-trans": 8
+      },
+      sections: [
+        {
+          id: "listening", name: "听力", en: "Listening", weight: 0.35,
+          types: [
+            { id: "c6-conv", name: "长对话", max: 8, weight: 0.08, target: 0.75,
+              tip: "预读选项判断场景，抓第二个说话人的回答；题干顺序与原文一致，漏掉一题就果断跳下一题。" },
+            { id: "c6-passage", name: "听力篇章", max: 7, weight: 0.07, target: 0.75,
+              tip: "抓段落主题句和信号词；错题回听对应段落，而不是整篇重听。" },
+            { id: "c6-lecture", name: "讲座讲话", max: 10, weight: 0.20, target: 0.75,
+              tip: "讲座题考结构和态度：笔记只记论点与例子的对应，训练先听结构再听细节。" }
+          ]
+        },
+        {
+          id: "reading", name: "阅读", en: "Reading", weight: 0.35,
+          types: [
+            { id: "c6-cloze", name: "选词填空", max: 10, weight: 0.05, target: 0.85,
+              tip: "先标 15 个候选词的词性，再按空定词性、按句定词义；控制在 8 分钟内。" },
+            { id: "c6-match", name: "长篇阅读", max: 10, weight: 0.10, target: 0.85,
+              tip: "先读题干，抓独特名词和数字回文定位，优先匹配段落首尾句；限时 12 分钟。" },
+            { id: "c6-careful", name: "仔细阅读", max: 10, weight: 0.20, target: 0.85,
+              tip: "题干定位加同义替换识别是核心。每道错题标注原因：定位错、没看出替换，还是被干扰项带偏。" }
+          ]
+        },
+        {
+          id: "writing", name: "写作", en: "Writing", weight: 0.15,
+          types: [
+            { id: "c6-writing", name: "写作", max: 15, weight: 0.15, target: 0.75,
+              tip: "六级重论证：观点句加例证，再补一句让步；每周限时 1 篇，重点改论证是否成立。" }
+          ]
+        },
+        {
+          id: "translation", name: "翻译", en: "Translation", weight: 0.15,
+          types: [
+            { id: "c6-trans", name: "翻译", max: 15, weight: 0.15, target: 0.70,
+              tip: "长句先断再合，避免逐字直译；积累中国文化固定表达，每周精译 1 段对照范文。" }
+          ]
+        }
+      ]
+    }
+  }
+};
+
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+function sectionTarget(sec) {
+  const w = sec.types.reduce((s, t) => s + t.weight, 0);
+  return w ? sec.types.reduce((s, t) => s + t.weight * t.target, 0) / w : 0;
+}
+
+function configIssues(cfg) {
+  const issues = [];
+  for (const exam of Object.values(cfg.exams)) {
+    let sectionSum = 0;
+    for (const sec of exam.sections) {
+      sectionSum += sec.weight;
+      const typeSum = sec.types.reduce((s, t) => s + t.weight, 0);
+      if (Math.abs(typeSum - sec.weight) > 1e-4) {
+        issues.push(`${exam.label} ${sec.name}：题型权重合计 ${(typeSum * 100).toFixed(1)}%，应为 ${(sec.weight * 100).toFixed(1)}%`);
+      }
+    }
+    if (Math.abs(sectionSum - 1) > 1e-4) {
+      issues.push(`${exam.label}：四个部分权重合计 ${(sectionSum * 100).toFixed(1)}%，应为 100%`);
+    }
+  }
+  return issues;
+}
+
+function readEntry(raw) {
+  if (raw === null || raw === undefined) return null;
+  const str = typeof raw === "string" ? raw.trim() : raw;
+  if (str === "") return null;
+  const num = Number(str);
+  return Number.isFinite(num) ? num : null;
+}
+
+function computeDiagnosis(cfg, examId, entries) {
+  const exam = cfg.exams[examId];
+  if (!exam) throw new Error("未知考试类型：" + examId);
+  entries = entries || {};
+  const total = cfg.total;
+
+  const sections = [];
+  const candidates = [];
+  const met = [];
+  let enteredWeight = 0, accWeightedSum = 0, targetWeightedSum = 0;
+  let enteredCount = 0, totalTypes = 0;
+
+  for (const sec of exam.sections) {
+    let wSum = 0, accSum = 0, secCount = 0;
+    const types = [];
+
+    for (const t of sec.types) {
+      totalTypes++;
+      const val = readEntry(entries[t.id]);
+      const entered = val !== null;
+      const acc = entered ? clamp(val / t.max, 0, 1) : null;
+      types.push({ id: t.id, name: t.name, max: t.max, weight: t.weight, target: t.target, acc, entered });
+      if (!entered) continue;
+
+      enteredCount++; secCount++;
+      wSum += t.weight; accSum += t.weight * acc;
+      enteredWeight += t.weight; accWeightedSum += t.weight * acc; targetWeightedSum += t.weight * t.target;
+
+      const gain = (t.target - acc) * t.weight * total;
+      if (gain > 0) {
+        candidates.push({
+          id: t.id, name: t.name, sectionId: sec.id, sectionName: sec.name,
+          acc, target: t.target, gain, tip: t.tip
+        });
+      } else {
+        met.push({ id: t.id, name: t.name, acc, target: t.target });
+      }
+    }
+
+    sections.push({
+      id: sec.id, name: sec.name, weight: sec.weight,
+      maxPoints: sec.weight * total,
+      acc: wSum ? accSum / wSum : null,
+      targetAcc: sectionTarget(sec),
+      points: wSum ? accSum * total : null,
+      targetPoints: sec.weight * total * sectionTarget(sec),
+      enteredCount: secCount, totalTypes: sec.types.length,
+      types
+    });
+  }
+
+  candidates.sort((a, b) => b.gain - a.gain);
+
+  const coverage = enteredWeight;
+  const composite = coverage ? (accWeightedSum / coverage) * total : null;
+  const targetComposite = coverage ? (targetWeightedSum / coverage) * total : null;
+
+  return {
+    examLabel: exam.label, total, sections, candidates, met,
+    coverage, composite, targetComposite, enteredCount, totalTypes
+  };
+}
+/* ===== ENGINE END ===== */
+
+/* ============================================================
+   UI
+   ============================================================ */
+
+const pct = v => v === null || v === undefined ? "—" : Math.round(v * 100) + "%";
+const formatPoints = v => v === null || v === undefined ? "—"
+  : (Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, "");
+
+const state = {
+  exam: "cet4",
+  entries: { cet4: {}, cet6: {} }
+};
+
+const entryBody = document.getElementById("entry-body");
+const diagBody = document.getElementById("diag-body");
+const barEl = document.getElementById("ruler-bar");
+let rulerRefs = [];
+
+function findType(examId, typeId) {
+  for (const sec of CONFIG.exams[examId].sections) {
+    for (const t of sec.types) if (t.id === typeId) return t;
+  }
+  return null;
+}
+
+/* ---------- ruler ---------- */
+
+function buildScale() {
+  const scale = document.getElementById("scale");
+  let html = "";
+  for (let p = 0; p <= 700; p += 50) {
+    const major = p % 100 === 0;
+    const labelled = major && p < 700; // 700 与末端的 710 标签会重叠
+    html += `<span class="tick${major ? " major" : ""}" style="left:${(p / CONFIG.total * 100).toFixed(3)}%">` +
+      (labelled ? `<span class="tick-label">${p}</span>` : "") + `</span>`;
+  }
+  html += `<span class="tick major end" style="left:100%"><span class="tick-label">710</span></span>`;
+  scale.innerHTML = html;
+}
+
+function buildRuler() {
+  const exam = CONFIG.exams[state.exam];
+  rulerRefs = [];
+  barEl.innerHTML = exam.sections.map(sec => `
+    <div class="seg" style="width:${sec.weight * 100}%" data-sec="${sec.id}">
+      <div class="seg-inner">
+        <div class="seg-label">
+          <span class="seg-name">${sec.name}</span>
+          <span class="seg-w">${Math.round(sec.weight * 100)}%</span>
+        </div>
+        <div class="seg-track">
+          <div class="seg-fill"></div>
+          <div class="seg-risk"></div>
+          <div class="seg-marker"></div>
+        </div>
+        <div class="seg-pts"><span class="earned">—</span><span class="den">/ ${formatPoints(sec.weight * CONFIG.total)}</span></div>
+      </div>
+    </div>`).join("");
+
+  barEl.querySelectorAll(".seg").forEach(segEl => {
+    rulerRefs.push({
+      id: segEl.dataset.sec,
+      fill: segEl.querySelector(".seg-fill"),
+      risk: segEl.querySelector(".seg-risk"),
+      marker: segEl.querySelector(".seg-marker"),
+      earned: segEl.querySelector(".earned"),
+      track: segEl.querySelector(".seg-track")
+    });
+  });
+}
+
+function updateRuler(result) {
+  for (const sec of result.sections) {
+    const ref = rulerRefs.find(r => r.id === sec.id);
+    if (!ref) continue;
+    // 以整段满分为分母：未录入的题型显示为未得分，而不是按已录入项折算
+    const fillPct = sec.points === null ? 0 : clamp(sec.points / sec.maxPoints, 0, 1) * 100;
+    const targetPct = (sec.targetAcc ?? 0) * 100;
+    ref.fill.style.width = fillPct.toFixed(2) + "%";
+    ref.risk.style.left = fillPct.toFixed(2) + "%";
+    ref.risk.style.width = Math.max(0, targetPct - fillPct).toFixed(2) + "%";
+    ref.marker.style.left = targetPct.toFixed(2) + "%";
+    ref.earned.textContent = sec.points === null ? "—" : formatPoints(sec.points);
+    ref.track.title = sec.acc === null
+      ? `${sec.name}：未录入 · 目标 ${pct(sec.targetAcc)}`
+      : `${sec.name}：已得 ${formatPoints(sec.points)} / ${formatPoints(sec.maxPoints)} 分 · 目标 ${pct(sec.targetAcc)} · 已录入题型正确率 ${pct(sec.acc)}`;
+  }
+}
+
+/* ---------- entry ---------- */
+
+function rowHTML(sec, t) {
+  const value = state.entries[state.exam][t.id] ?? "";
+  const unit = t.max === 15 ? "15 分制" : t.max + " 题";
+  return `
+    <div class="row">
+      <label class="row-name" for="in-${t.id}">${t.name}<span class="q">${unit}</span></label>
+      <div class="row-input">
+        <input id="in-${t.id}" data-type="${t.id}" data-max="${t.max}"
+               type="number" inputmode="decimal" min="0" max="${t.max}" step="0.5"
+               placeholder="—" value="${value}"
+               aria-label="${sec.name} ${t.name}（满分 ${t.max}）">
+        <span class="of">/ ${t.max}</span>
+      </div>
+      <span class="pill" id="pill-${t.id}">未录</span>
+    </div>`;
+}
+
+function renderEntry() {
+  const exam = CONFIG.exams[state.exam];
+  entryBody.innerHTML = exam.sections.map(sec => `
+    <section class="entry-section">
+      <header class="entry-sec-head">
+        <h3>${sec.name}</h3><span class="en">${sec.en}</span>
+        <p class="meta">${Math.round(sec.weight * 100)}% · ${formatPoints(sec.weight * CONFIG.total)} 分 · 目标 ${pct(sectionTarget(sec))}</p>
+      </header>
+      <div class="rows">${sec.types.map(t => rowHTML(sec, t)).join("")}</div>
+    </section>`).join("");
+  syncPills();
+}
+
+function syncPills() {
+  const examId = state.exam;
+  entryBody.querySelectorAll("input[data-type]").forEach(inp => {
+    const pill = document.getElementById("pill-" + inp.dataset.type);
+    if (!pill) return;
+    const raw = state.entries[examId][inp.dataset.type];
+    const val = readEntry(raw);
+    if (val === null) { pill.textContent = "未录"; pill.className = "pill"; return; }
+    const acc = clamp(val / Number(inp.dataset.max), 0, 1);
+    const t = findType(examId, inp.dataset.type);
+    pill.textContent = pct(acc);
+    pill.className = "pill " + (acc >= t.target ? "good" : "bad");
+  });
+}
+
+/* ---------- hero ---------- */
+
+function updateHero(result) {
+  document.getElementById("hero-eyebrow").textContent = `${CONFIG.exams[state.exam].label} · 整卷 710 分`;
+  const scoreEl = document.getElementById("score-value");
+  const noteEl = document.getElementById("score-note");
+  const covVal = document.getElementById("coverage-value");
+  const covNote = document.getElementById("coverage-note");
+
+  if (result.composite === null) {
+    scoreEl.textContent = "—";
+    noteEl.className = "score-note";
+    noteEl.textContent = "填入分数后生成诊断";
+  } else {
+    const shown = Math.round(result.composite);
+    const shownTarget = Math.round(result.targetComposite);
+    const diff = shownTarget - shown;
+    scoreEl.textContent = String(shown);
+    if (diff > 0) {
+      noteEl.className = "score-note bad";
+      noteEl.textContent = `距目标线 ${shownTarget} 还差 ${diff} 分`;
+    } else if (diff < 0) {
+      noteEl.className = "score-note good";
+      noteEl.textContent = `已高出目标线 ${-diff} 分`;
+    } else {
+      noteEl.className = "score-note good";
+      noteEl.textContent = "正好在目标线上";
+    }
+  }
+
+  covVal.textContent = `${result.enteredCount} / ${result.totalTypes}`;
+  covNote.textContent = result.coverage >= 0.999
+    ? "全部题型已录入 · 权重 100%"
+    : `按 ${Math.round(result.coverage * 100)}% 权重折算`;
+}
+
+/* ---------- diagnosis ---------- */
+
+function emptyHTML() {
+  return `
+    <div class="empty">
+      <p class="empty-title">还没有可诊断的分数</p>
+      <p class="dim">在左侧按题型录入本次模考得分，或先载入一组示例看看效果。</p>
+      <button type="button" class="btn accent" data-action="sample">载入示例分数</button>
+    </div>`;
+}
+
+function gapTiles(result) {
+  return result.sections.map(sec => {
+    if (sec.points === null) {
+      return `<div class="gap"><span class="gap-name">${sec.name}</span><span class="gap-val none">—</span><span class="gap-sub">尚未录入</span></div>`;
+    }
+    const g = sec.targetPoints - sec.points;
+    const cls = g > 0.5 ? "neg" : g < -0.5 ? "pos" : "";
+    const num = Math.abs(g) <= 0.5 ? "0" : (g > 0 ? "−" : "+") + formatPoints(Math.abs(g));
+    const prefix = sec.enteredCount < sec.totalTypes ? "≈" : "";
+    return `<div class="gap"><span class="gap-name">${sec.name}</span><span class="gap-val ${cls}" title="较目标线${sec.enteredCount < sec.totalTypes ? "（按已录入题型折算）" : ""}">${prefix}${num}</span><span class="gap-sub">较目标</span></div>`;
+  }).join("");
+}
+
+function renderDiagnosis(result) {
+  if (result.coverage === 0) { diagBody.innerHTML = emptyHTML(); return; }
+
+  let html = `<div class="gap-grid">${gapTiles(result)}</div>`;
+  const top = result.candidates.slice(0, 4);
+
+  if (top.length) {
+    html += `<ol class="rx-list">` + top.map((c, i) => `
+      <li class="rx">
+        <span class="rx-rank">${String(i + 1).padStart(2, "0")}</span>
+        <div class="rx-main">
+          <div class="rx-title"><h3>${c.name}</h3><span class="tag">${c.sectionName}</span></div>
+          <p class="rx-meta"><span>当前 ${pct(c.acc)}</span><span class="arrow">→</span><span>目标 ${pct(c.target)}</span></p>
+          <p class="rx-tip">${c.tip}</p>
+        </div>
+        <div class="rx-gains">
+          <div class="rx-gain"><strong>+${formatPoints(c.gain)}</strong><span>可追回</span></div>
+          <div class="rx-gain impact"><strong>+${formatPoints(c.gain / result.coverage)}</strong><span>折算影响</span></div>
+        </div>
+      </li>`).join("") + `</ol>`;
+
+    const rest = result.candidates.length - top.length;
+    if (rest > 0) html += `<p class="rest">另有 ${rest} 项低于目标，先补前 4 项。</p>`;
+
+    const top3 = result.candidates.slice(0, 3);
+    const gainSum = top3.reduce((s, c) => s + c.gain, 0);
+    const projected = result.composite + gainSum / result.coverage;
+    html += `<div class="whatif">把前 ${top3.length} 项补到目标，综合估分约 <strong>${Math.round(projected)}</strong> 分（<span class="up">+${formatPoints(gainSum)}</span>，其余项维持当前水平）。</div>`;
+  } else {
+    html += `<div class="all-met"><p>录入的题型都到了目标线。</p><p class="dim">把 CONFIG 里的目标正确率各上调 5%，再诊断一轮。</p></div>`;
+  }
+
+  if (result.met.length) {
+    html += `<p class="met">已达标：${result.met.map(m => `${m.name} ${pct(m.acc)}`).join("、")}</p>`;
+  }
+
+  diagBody.innerHTML = html;
+}
+
+/* ---------- actions ---------- */
+
+function updateAll() {
+  const result = computeDiagnosis(CONFIG, state.exam, state.entries[state.exam]);
+  updateHero(result);
+  updateRuler(result);
+  renderDiagnosis(result);
+}
+
+function loadSample() {
+  state.entries[state.exam] = { ...CONFIG.exams[state.exam].sample };
+  renderEntry();
+  updateAll();
+}
+
+function clearEntries() {
+  state.entries[state.exam] = {};
+  renderEntry();
+  updateAll();
+}
+
+entryBody.addEventListener("input", e => {
+  const inp = e.target.closest("input[data-type]");
+  if (!inp) return;
+  state.entries[state.exam][inp.dataset.type] = inp.value;
+  syncPills();
+  updateAll();
+});
+
+entryBody.addEventListener("change", e => {
+  const inp = e.target.closest("input[data-type]");
+  if (!inp) return;
+  if (inp.value === "") {
+    state.entries[state.exam][inp.dataset.type] = "";
+  } else {
+    const max = Number(inp.dataset.max);
+    let v = Number(inp.value);
+    if (!Number.isFinite(v)) v = 0;
+    v = clamp(v, 0, max);
+    inp.value = String(v);
+    state.entries[state.exam][inp.dataset.type] = String(v);
+  }
+  syncPills();
+  updateAll();
+});
+
+entryBody.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  const inp = e.target.closest("input[data-type]");
+  if (!inp) return;
+  e.preventDefault();
+  const all = [...entryBody.querySelectorAll("input[data-type]")];
+  const i = all.indexOf(inp);
+  if (i > -1 && i < all.length - 1) all[i + 1].focus();
+  else inp.blur();
+});
+
+document.querySelectorAll(".exam-switch button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (btn.dataset.exam === state.exam) return;
+    state.exam = btn.dataset.exam;
+    document.querySelectorAll(".exam-switch button").forEach(b => {
+      b.setAttribute("aria-pressed", String(b.dataset.exam === state.exam));
+    });
+    renderEntry();
+    buildRuler();
+    updateAll();
+  });
+});
+
+document.getElementById("sample-btn").addEventListener("click", loadSample);
+document.getElementById("clear-btn").addEventListener("click", clearEntries);
+
+diagBody.addEventListener("click", e => {
+  const btn = e.target.closest("[data-action='sample']");
+  if (btn) loadSample();
+});
+
+/* ---------- init ---------- */
+
+const pad = n => String(n).padStart(2, "0");
+const now = new Date();
+document.getElementById("dateline").textContent =
+  `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}`;
+
+const issues = configIssues(CONFIG);
+if (issues.length) {
+  const warn = document.getElementById("config-warning");
+  warn.hidden = false;
+  warn.textContent = "权重表自检：" + issues.join("；");
+  console.warn("[CET CONFIG]", issues);
+}
+
+buildScale();
+renderEntry();
+buildRuler();
+updateAll();
+</script>
+</body>
+</html>
