@@ -316,6 +316,33 @@
   .hist-empty { color: var(--faint); font-size: 13px; padding: 12px 0 4px; }
   .btn.danger { color: var(--rust); border-color: rgba(206, 123, 100, .38); }
   .btn.danger:hover { border-color: var(--rust); color: var(--paper); }
+  .btn.is-on { border-color: var(--brass); color: var(--paper); background: var(--brass-soft); }
+
+  /* ---------- 学员 / 趋势 / 弱项 ---------- */
+  .student-bar { display: flex; gap: 6px; align-items: center; }
+  .student-bar select {
+    background: var(--panel); color: var(--paper); border: 1px solid var(--line);
+    border-radius: 7px; padding: 6px 8px; font: inherit; font-size: 12px; max-width: 150px;
+  }
+  .student-bar select:focus { outline: 1px solid var(--brass); }
+  .trend-wrap { position: relative; margin-top: 12px; }
+  #trend-canvas { display: block; width: 100%; }
+  .trend-tip {
+    position: absolute; pointer-events: none; z-index: 2;
+    background: #0d1714; border: 1px solid var(--line); border-radius: 7px;
+    padding: 6px 10px; font-size: 12px; color: var(--paper); white-space: nowrap;
+    transform: translate(-50%, -130%);
+  }
+  .weak-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+  .weak-table th, .weak-table td { text-align: left; padding: 7px 6px; border-top: 1px solid var(--line-soft); }
+  .weak-table th { color: var(--faint); font-weight: 400; font-size: 12px; }
+  .weak-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .weak-table .weak-sec { color: var(--dim); }
+  .weak-table tr.weak-bad td { color: var(--rust); }
+  .weak-alert {
+    margin-top: 12px; padding: 8px 12px; border-radius: 8px; font-size: 13px;
+    color: var(--rust); border: 1px solid rgba(206, 123, 100, .4); background: rgba(206, 123, 100, .08);
+  }
 
   /* ---------- 打印报告 ---------- */
   #print-report { display: none; }
@@ -357,6 +384,12 @@
       </div>
     </div>
     <div class="controls">
+      <div class="student-bar">
+        <select id="student-select" aria-label="选择学员"></select>
+        <button type="button" class="btn" id="student-new">新建</button>
+        <button type="button" class="btn" id="student-rename">改名</button>
+        <button type="button" class="btn danger" id="student-del">删除</button>
+      </div>
       <div class="exam-switch" role="group" aria-label="选择考试类型">
         <button type="button" data-exam="cet4" aria-pressed="true">CET-4</button>
         <button type="button" data-exam="cet6" aria-pressed="false">CET-6</button>
@@ -435,6 +468,38 @@
     </div>
     <p class="panel-hint">只保存在这台设备的浏览器里，不上传。点任意一条，可以把它填回左侧重新看。</p>
     <div id="history-body"></div>
+  </section>
+
+  <section class="panel trend-panel" aria-labelledby="trend-title">
+    <div class="panel-head">
+      <div>
+        <p class="eyebrow">04 · Trend</p>
+        <h2 id="trend-title">成绩趋势</h2>
+      </div>
+      <div class="panel-actions" id="trend-switch">
+        <button type="button" class="btn is-on" data-metric="total">综合</button>
+        <button type="button" class="btn" data-metric="listening">听力</button>
+        <button type="button" class="btn" data-metric="reading">阅读</button>
+        <button type="button" class="btn" data-metric="writing">写作</button>
+        <button type="button" class="btn" data-metric="translation">翻译</button>
+      </div>
+    </div>
+    <p class="panel-hint">按这位学员的历次记录绘制；虚线是目标线。鼠标移到点上可看具体分数。</p>
+    <div class="trend-wrap">
+      <canvas id="trend-canvas" role="img" aria-label="成绩趋势图"></canvas>
+      <div id="trend-tip" class="trend-tip" hidden></div>
+    </div>
+  </section>
+
+  <section class="panel weak-panel" aria-labelledby="weak-title">
+    <div class="panel-head">
+      <div>
+        <p class="eyebrow">05 · Weak spots</p>
+        <h2 id="weak-title">弱项追踪</h2>
+      </div>
+    </div>
+    <p class="panel-hint">同一题型连续 3 次低于目标，会标红；达标率按该学员全部记录统计。</p>
+    <div id="weak-body"></div>
   </section>
 
   <footer class="footer">
@@ -628,31 +693,65 @@ function applyBrand(b) {
    本地存档 —— 只存原始分数，总分每次重算
    ============================================================ */
 
-const STORE_KEY = `cet-diagnosis:v1:${BRAND_KEY}`;
-const HISTORY_MAX = 30;
+const STORE_KEY = `cet-diagnosis:v2:${BRAND_KEY}`;
+const LEGACY_KEY = `cet-diagnosis:v1:${BRAND_KEY}`;
+const HISTORY_MAX = 60;
+
+const uid = () => "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function blankStudent(name) {
+  return { id: uid(), name: name || "学员", note: "", createdAt: Date.now() };
+}
 
 function emptyStore() {
-  return { v: 1, brand: BRAND_KEY, exams: { cet4: [], cet6: [] } };
+  const s = blankStudent("学员 1");
+  return { v: 2, currentId: s.id, students: [s], records: { [s.id]: { cet4: [], cet6: [] } } };
+}
+
+function normalizeStore(data) {
+  if (!data || !Array.isArray(data.students) || !data.students.length) return null;
+  data.v = 2;
+  for (const s of data.students) {
+    if (!data.records[s.id]) data.records[s.id] = { cet4: [], cet6: [] };
+    for (const id of ["cet4", "cet6"]) {
+      const list = data.records[s.id][id];
+      data.records[s.id][id] = (Array.isArray(list) ? list : [])
+        .filter(r => r && typeof r.ts === "number" && r.scores && typeof r.scores === "object")
+        .sort((a, b) => a.ts - b.ts)
+        .slice(-HISTORY_MAX);
+    }
+  }
+  if (!data.students.some(s => s.id === data.currentId)) data.currentId = data.students[0].id;
+  return data;
 }
 
 function loadStore() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return emptyStore();
-    const data = JSON.parse(raw);
-    if (!data || typeof data !== "object" || !data.exams) return emptyStore();
-    for (const id of ["cet4", "cet6"]) {
-      if (!Array.isArray(data.exams[id])) data.exams[id] = [];
-      data.exams[id] = data.exams[id]
-        .filter(r => r && typeof r.ts === "number" && r.scores && typeof r.scores === "object")
-        .sort((a, b) => a.ts - b.ts)
-        .slice(-HISTORY_MAX);
+    if (raw) {
+      const data = normalizeStore(JSON.parse(raw));
+      if (data) return data;
     }
-    return data;
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const old = JSON.parse(legacy);
+      const s = blankStudent("学员 1");
+      const data = { v: 2, currentId: s.id, students: [s], records: { [s.id]: { cet4: [], cet6: [] } } };
+      for (const id of ["cet4", "cet6"]) {
+        if (old && old.exams && Array.isArray(old.exams[id])) {
+          data.records[s.id][id] = old.exams[id].slice(-HISTORY_MAX);
+        }
+      }
+      return data;
+    }
   } catch (err) {
     console.warn("[CET store]", err);
-    return emptyStore();
   }
+  return emptyStore();
 }
 
 let store = loadStore();
@@ -660,6 +759,16 @@ let store = loadStore();
 function saveStore() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
   catch (err) { console.warn("[CET store] 写入失败", err); }
+}
+
+function currentStudent() {
+  return store.students.find(s => s.id === store.currentId) || store.students[0];
+}
+
+function currentRecords() {
+  const id = store.currentId;
+  if (!store.records[id]) store.records[id] = { cet4: [], cet6: [] };
+  return store.records[id][state.exam];
 }
 
 function currentScores() {
@@ -673,22 +782,22 @@ function currentScores() {
 
 function persistCurrent() {
   const scores = currentScores();
-  const examId = state.exam;
-  const list = store.exams[examId];
+  const list = currentRecords();
   if (!Object.keys(scores).length) return;
 
   const last = list[list.length - 1];
   const same = last && Date.now() - last.ts < 60 * 1000 &&
     JSON.stringify(last.scores) === JSON.stringify(scores);
 
-  if (same) {
-    last.ts = Date.now();
-  } else {
+  if (same) last.ts = Date.now();
+  else {
     list.push({ ts: Date.now(), scores });
     while (list.length > HISTORY_MAX) list.shift();
   }
   saveStore();
   renderHistory();
+  renderWeak();
+  drawTrend();
 }
 
 let saveTimer = 0;
@@ -707,7 +816,7 @@ function renderHistory() {
   const box = document.getElementById("history-body");
   if (!box) return;
 
-  const list = store.exams[state.exam].slice().reverse();
+  const list = currentRecords().slice().reverse();
   if (!list.length) {
     box.innerHTML = `<p class="hist-empty">还没有记录。录入一组分数，它会自动存下来。</p>`;
     return;
@@ -719,9 +828,7 @@ function renderHistory() {
     let delta = "";
     if (prev && prev.composite !== null && r.composite !== null) {
       const diff = Math.round(r.composite) - Math.round(prev.composite);
-      if (diff !== 0) {
-        delta = `<span class="hist-delta ${diff > 0 ? "up" : "down"}">${diff > 0 ? "+" : ""}${diff}</span>`;
-      }
+      if (diff !== 0) delta = `<span class="hist-delta ${diff > 0 ? "up" : "down"}">${diff > 0 ? "+" : ""}${diff}</span>`;
     }
     prev = r;
     const score = r.composite === null ? "—" : String(Math.round(r.composite));
@@ -734,6 +841,202 @@ function renderHistory() {
   }).join("");
 
   box.innerHTML = `<div class="hist-list">${rows}</div>`;
+}
+
+/* ---------- 学员 ---------- */
+
+function renderStudentSelect() {
+  const sel = document.getElementById("student-select");
+  if (!sel) return;
+  sel.innerHTML = store.students.map(s =>
+    `<option value="${s.id}"${s.id === store.currentId ? " selected" : ""}>${escapeHtml(s.name)}</option>`
+  ).join("");
+}
+
+function switchStudent(id) {
+  if (!store.records[id]) store.records[id] = { cet4: [], cet6: [] };
+  store.currentId = id;
+  saveStore();
+  state.entries[state.exam] = {};
+  renderStudentSelect();
+  renderEntry();
+  updateAll();
+  renderHistory();
+  renderWeak();
+  drawTrend();
+}
+
+/* ---------- 趋势 ---------- */
+
+let trendMetric = "total";
+let trendPoints = [];
+
+function metricInfo() {
+  if (trendMetric === "total") {
+    return { max: CONFIG.total, label: "综合分" };
+  }
+  const sec = CONFIG.exams[state.exam].sections.find(s => s.id === trendMetric);
+  return { max: sec ? sec.weight * CONFIG.total : CONFIG.total, label: sec ? sec.name : "" };
+}
+
+function trendSeries() {
+  const out = [];
+  for (const rec of currentRecords()) {
+    const r = computeDiagnosis(CONFIG, state.exam, rec.scores);
+    let v = null;
+    if (trendMetric === "total") v = r.composite;
+    else {
+      const sec = r.sections.find(s => s.id === trendMetric);
+      v = sec ? sec.points : null;
+    }
+    if (v !== null) out.push({ ts: rec.ts, v });
+  }
+  return out;
+}
+
+function trendTargetValue() {
+  const recs = currentRecords();
+  if (!recs.length) return null;
+  const r = computeDiagnosis(CONFIG, state.exam, recs[recs.length - 1].scores);
+  if (trendMetric === "total") return r.targetComposite;
+  const sec = r.sections.find(s => s.id === trendMetric);
+  return sec ? sec.targetPoints : null;
+}
+
+function drawTrend() {
+  const cv = document.getElementById("trend-canvas");
+  if (!cv) return;
+  const wrap = cv.parentElement;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(320, wrap.clientWidth);
+  const h = 230;
+  cv.width = w * dpr;
+  cv.height = h * dpr;
+  cv.style.width = w + "px";
+  cv.style.height = h + "px";
+
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const info = metricInfo();
+  const max = info.max;
+  const pad = { l: 46, r: 18, t: 18, b: 30 };
+  const x0 = pad.l, x1 = w - pad.r, y0 = pad.t, y1 = h - pad.b;
+
+  ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "right";
+  ctx.strokeStyle = "rgba(147,161,170,.16)";
+  ctx.fillStyle = "#788892";
+  for (let i = 0; i <= 4; i++) {
+    const y = y1 - (y1 - y0) * i / 4;
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x1, y);
+    ctx.stroke();
+    ctx.fillText(String(Math.round(max * i / 4)), x0 - 8, y);
+  }
+
+  const series = trendSeries();
+  const accent = getComputedStyle(document.documentElement).getPropertyValue("--brass").trim() || "#D8A94E";
+  const target = trendTargetValue();
+
+  if (target !== null && target > 0) {
+    const ty = y1 - (y1 - y0) * Math.min(1, target / max);
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = "rgba(147,161,170,.55)";
+    ctx.beginPath();
+    ctx.moveTo(x0, ty);
+    ctx.lineTo(x1, ty);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (series.length === 0) {
+    ctx.fillStyle = "#788892";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText("还没有记录。填一组分数，趋势就出来了。", x0, y0 + 22);
+    trendPoints = [];
+    return;
+  }
+
+  const t0 = series[0].ts;
+  const t1 = series[series.length - 1].ts;
+  const span = Math.max(t1 - t0, 1);
+  const px = ts => series.length === 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * (ts - t0) / span;
+  const py = v => y1 - (y1 - y0) * Math.min(1, Math.max(0, v / max));
+
+  trendPoints = series.map(p => ({ ts: p.ts, v: p.v, x: px(p.ts), y: py(p.v) }));
+
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  trendPoints.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+  ctx.stroke();
+
+  for (const p of trendPoints) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2);
+    ctx.fillStyle = accent;
+    ctx.fill();
+  }
+
+  ctx.fillStyle = "#788892";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(info.label, x0, y1 + 20);
+}
+
+/* ---------- 弱项 ---------- */
+
+function weakStats() {
+  const recs = currentRecords();
+  const exam = CONFIG.exams[state.exam];
+  const rows = [];
+  for (const sec of exam.sections) {
+    for (const t of sec.types) {
+      let total = 0, passed = 0, streak = 0, maxStreak = 0;
+      for (const rec of recs) {
+        const raw = rec.scores[t.id];
+        if (raw === undefined || raw === null || raw === "") continue;
+        total++;
+        const acc = clamp(Number(raw) / t.max, 0, 1);
+        if (acc >= t.target) { passed++; streak = 0; }
+        else { streak++; if (streak > maxStreak) maxStreak = streak; }
+      }
+      rows.push({ name: t.name, section: sec.name, total, passed, streak: maxStreak, rate: total ? passed / total : null });
+    }
+  }
+  return rows;
+}
+
+function renderWeak() {
+  const box = document.getElementById("weak-body");
+  if (!box) return;
+  const rows = weakStats().filter(r => r.total > 0);
+  if (!rows.length) {
+    box.innerHTML = `<p class="hist-empty">还没有记录。连续三次低于目标的题型，会在这里标红。</p>`;
+    return;
+  }
+  const flagged = rows.filter(r => r.streak >= 3);
+  const body = rows.map(r => `
+    <tr class="${r.streak >= 3 ? "weak-bad" : ""}">
+      <td>${r.name}</td>
+      <td class="weak-sec">${r.section}</td>
+      <td class="num">${r.total}</td>
+      <td class="num">${r.rate === null ? "—" : Math.round(r.rate * 100) + "%"}</td>
+      <td class="num">${r.streak >= 3 ? "连续 " + r.streak + " 次" : "—"}</td>
+    </tr>`).join("");
+
+  box.innerHTML =
+    (flagged.length ? `<p class="weak-alert">连续 3 次低于目标：${flagged.map(f => f.name).join("、")}</p>` : "") +
+    `<table class="weak-table">
+      <thead><tr><th>题型</th><th>部分</th><th class="num">记录数</th><th class="num">达标率</th><th class="num">连续未达标</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>`;
 }
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -1139,6 +1442,8 @@ document.querySelectorAll(".exam-switch button").forEach(btn => {
     buildRuler();
     updateAll();
     renderHistory();
+    renderWeak();
+    drawTrend();
   });
 });
 
@@ -1178,7 +1483,7 @@ document.getElementById("history-body").addEventListener("click", e => {
   const row = e.target.closest(".hist-row");
   if (!row) return;
   const ts = Number(row.dataset.ts);
-  const rec = store.exams[state.exam].find(r => r.ts === ts);
+  const rec = currentRecords().find(r => r.ts === ts);
   if (!rec) return;
   state.entries[state.exam] = { ...rec.scores };
   renderEntry();
@@ -1210,21 +1515,41 @@ document.getElementById("import-file").addEventListener("change", e => {
   reader.onload = () => {
     try {
       const data = JSON.parse(String(reader.result));
-      if (!data || !data.exams) throw new Error("文件里没有 exams 字段");
-      const merged = emptyStore();
-      for (const id of ["cet4", "cet6"]) {
-        const incoming = Array.isArray(data.exams[id]) ? data.exams[id] : [];
-        const seen = new Set();
-        const all = [...store.exams[id], ...incoming]
-          .filter(r => r && typeof r.ts === "number" && r.scores)
-          .sort((a, b) => a.ts - b.ts)
-          .filter(r => (seen.has(r.ts) ? false : (seen.add(r.ts), true)));
-        merged.exams[id] = all.slice(-HISTORY_MAX);
+      if (data && Array.isArray(data.students) && data.records) {
+        const normalized = normalizeStore(data);
+        if (!normalized) throw new Error("学员数据不完整");
+        if (!confirm(`导入会覆盖当前全部学员（现有 ${store.students.length} 位）。继续？`)) {
+          e.target.value = "";
+          return;
+        }
+        store = normalized;
+        saveStore();
+        state.entries[state.exam] = {};
+        renderStudentSelect();
+        renderEntry();
+        updateAll();
+        renderHistory();
+        renderWeak();
+        drawTrend();
+        alert(`导入完成：${store.students.length} 位学员。`);
+      } else if (data && data.exams) {
+        for (const id of ["cet4", "cet6"]) {
+          const incoming = (Array.isArray(data.exams[id]) ? data.exams[id] : [])
+            .filter(r => r && typeof r.ts === "number" && r.scores);
+          const target = store.records[store.currentId][id];
+          const seen = new Set(target.map(r => r.ts));
+          for (const r of incoming) if (!seen.has(r.ts)) target.push(r);
+          target.sort((a, b) => a.ts - b.ts);
+          while (target.length > HISTORY_MAX) target.shift();
+        }
+        saveStore();
+        renderHistory();
+        renderWeak();
+        drawTrend();
+        alert("导入完成（已并入当前学员）。");
+      } else {
+        throw new Error("无法识别的文件格式");
       }
-      store = merged;
-      saveStore();
-      renderHistory();
-      alert(`导入完成：CET-4 ${store.exams.cet4.length} 条，CET-6 ${store.exams.cet6.length} 条。`);
     } catch (err) {
       alert("导入失败：" + err.message);
     }
@@ -1234,15 +1559,80 @@ document.getElementById("import-file").addEventListener("change", e => {
 });
 
 document.getElementById("wipe-btn").addEventListener("click", () => {
-  const n = store.exams.cet4.length + store.exams.cet6.length;
-  if (!n) { alert("还没有记录。"); return; }
-  if (!confirm(`确定清空这台设备上的全部 ${n} 条记录？不可恢复。`)) return;
-  store = emptyStore();
+  const n = currentRecords().length;
+  if (!n) { alert("当前学员还没有记录。"); return; }
+  if (!confirm(`确定清空「${currentStudent().name}」的全部 ${n} 条记录？不可恢复。`)) return;
+  store.records[store.currentId][state.exam] = [];
   saveStore();
   renderHistory();
+  renderWeak();
+  drawTrend();
 });
 
+/* ---------- 初始化：历史 / 学员 / 趋势 / 弱项 ---------- */
+
 renderHistory();
+renderStudentSelect();
+renderWeak();
+drawTrend();
+
+document.getElementById("student-select").addEventListener("change", e => switchStudent(e.target.value));
+
+document.getElementById("student-new").addEventListener("click", () => {
+  const name = prompt("学员姓名", `学员 ${store.students.length + 1}`);
+  if (!name || !name.trim()) return;
+  const s = blankStudent(name.trim());
+  store.students.push(s);
+  store.records[s.id] = { cet4: [], cet6: [] };
+  switchStudent(s.id);
+});
+
+document.getElementById("student-rename").addEventListener("click", () => {
+  const s = currentStudent();
+  const name = prompt("新的姓名", s.name);
+  if (!name || !name.trim()) return;
+  s.name = name.trim();
+  saveStore();
+  renderStudentSelect();
+});
+
+document.getElementById("student-del").addEventListener("click", () => {
+  if (store.students.length <= 1) { alert("至少保留一位学员。"); return; }
+  const s = currentStudent();
+  if (!confirm(`删除「${s.name}」及其全部记录？`)) return;
+  store.students = store.students.filter(x => x.id !== s.id);
+  delete store.records[s.id];
+  switchStudent(store.students[0].id);
+});
+
+document.getElementById("trend-switch").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-metric]");
+  if (!btn) return;
+  trendMetric = btn.dataset.metric;
+  document.querySelectorAll("#trend-switch button").forEach(b => b.classList.toggle("is-on", b === btn));
+  drawTrend();
+});
+
+const trendTip = document.getElementById("trend-tip");
+const trendCanvas = document.getElementById("trend-canvas");
+
+trendCanvas.addEventListener("mousemove", e => {
+  const rect = trendCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  let best = null, bestD = 22;
+  for (const p of trendPoints) {
+    const d = Math.hypot(p.x - mx, p.y - my);
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  if (!best) { trendTip.hidden = true; return; }
+  trendTip.hidden = false;
+  trendTip.style.left = best.x + "px";
+  trendTip.style.top = best.y + "px";
+  trendTip.textContent = `${fmtStamp(best.ts)} · ${Math.round(best.v)}`;
+});
+trendCanvas.addEventListener("mouseleave", () => { trendTip.hidden = true; });
+
+window.addEventListener("resize", () => drawTrend());
 
 /* ---------- print report ---------- */
 
@@ -1275,7 +1665,7 @@ function buildReport() {
   document.getElementById("print-report").innerHTML = `
     <div class="pr-head">
       <p class="pr-brand">${BRAND.name}</p>
-      <p class="pr-sub">${BRAND.sub} · ${exam.label} · 诊断日期 ${dateStr}</p>
+      <p class="pr-sub">${BRAND.sub} · 学员：${escapeHtml(currentStudent().name)} · ${exam.label} · 诊断日期 ${dateStr}</p>
     </div>
     <div class="pr-hero">
       <div><span class="pr-score">${Math.round(result.composite)}</span><span class="pr-den"> / 710</span></div>
