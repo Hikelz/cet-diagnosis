@@ -1,0 +1,1906 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>四六级模考诊断台 · 机构版</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0A1210;
+    --panel: #101B16;
+    --panel-2: #14211B;
+    --line: #22352C;
+    --line-soft: #1A2A22;
+    --paper: #E9E6DA;
+    --dim: #9AA89F;
+    --faint: #75867C;
+    --emerald: #3F8A72;
+    --emerald-hi: #6FC4A4;
+    --emerald-soft: rgba(63, 138, 114, .14);
+    --red: #D26A5C;
+    --red-soft: rgba(210, 106, 92, .12);
+    --serif: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    --mono: "SF Mono", ui-monospace, "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    margin: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    background:
+      radial-gradient(1100px 540px at 14% -12%, rgba(63, 138, 114, .10), transparent 64%),
+      repeating-linear-gradient(0deg, transparent 0 31px, rgba(233, 230, 218, .014) 31px 32px),
+      repeating-linear-gradient(90deg, transparent 0 31px, rgba(233, 230, 218, .014) 31px 32px),
+      var(--bg);
+    color: var(--paper);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+  p, h1, h2, h3, ol, ul { margin: 0; padding: 0; }
+  button, input, select { font: inherit; color: inherit; }
+  button { background: none; border: 0; cursor: pointer; }
+  h1, h2, h3 { font-weight: 600; }
+  ::selection { background: rgba(63, 138, 114, .38); }
+  :focus-visible { outline: 2px solid var(--emerald-hi); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  .page { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 28px 34px; }
+
+  /* ---------- 顶部 ---------- */
+  .topbar {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 20px; padding: 26px 0 18px;
+    border-bottom: 1px solid var(--line-soft); flex-wrap: wrap;
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .2em;
+    color: var(--faint); text-transform: uppercase;
+  }
+  .brand h1 {
+    font-family: var(--serif); font-size: 28px; letter-spacing: .03em; margin-top: 5px;
+  }
+  .top-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .exam-switch {
+    display: inline-flex; padding: 3px; gap: 2px;
+    border: 1px solid var(--line); border-radius: 8px; background: rgba(16, 27, 22, .75);
+  }
+  .exam-btn {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+    padding: 6px 14px; border-radius: 6px; color: var(--dim);
+    transition: background-color .18s ease, color .18s ease;
+  }
+  .exam-btn:hover { color: var(--paper); }
+  .exam-btn.is-active { background: var(--emerald); color: #07110C; font-weight: 600; }
+
+  .btn {
+    border: 1px solid var(--line); border-radius: 7px;
+    padding: 7px 13px; font-size: 12px; color: var(--dim);
+    transition: border-color .18s ease, color .18s ease, background-color .18s ease;
+  }
+  .btn:hover { border-color: var(--emerald); color: var(--paper); }
+  .btn.primary { background: var(--emerald); border-color: var(--emerald); color: #07110C; font-weight: 600; }
+  .btn.primary:hover { background: var(--emerald-hi); border-color: var(--emerald-hi); color: #07110C; }
+  .btn.small { padding: 5px 9px; font-size: 11px; }
+  .btn.danger-ghost { color: var(--red); border-color: transparent; }
+  .btn.danger-ghost:hover { border-color: var(--red); background: var(--red-soft); }
+  .btn:disabled { opacity: .38; cursor: not-allowed; }
+
+  /* ---------- 学生栏 ---------- */
+  .student-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 14px; padding: 13px 0 14px;
+    border-bottom: 1px solid var(--line-soft); flex-wrap: wrap;
+  }
+  .student-picker { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+  .field-label { font-size: 10.5px; letter-spacing: .1em; color: var(--faint); white-space: nowrap; }
+  #student-select {
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--paper);
+    border-radius: 7px; padding: 6px 10px; min-width: 150px; max-width: 230px;
+  }
+  #student-select:disabled { opacity: .5; }
+  .student-note {
+    flex: 1; min-width: 140px; text-align: right; font-size: 11.5px; color: var(--faint);
+    overflow-wrap: anywhere;
+  }
+
+  /* ---------- 面板 ---------- */
+  .workspace {
+    display: grid; grid-template-columns: 1.08fr .92fr; gap: 20px;
+    margin-top: 20px; align-items: start;
+  }
+  .bottom {
+    display: grid; grid-template-columns: 1.35fr .65fr; gap: 20px;
+    margin-top: 20px; align-items: start;
+  }
+  .panel {
+    background: linear-gradient(180deg, rgba(18, 31, 25, .96), rgba(14, 24, 19, .96));
+    border: 1px solid var(--line-soft); border-radius: 12px;
+    padding: 22px; min-width: 0;
+  }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 12px; flex-wrap: wrap;
+  }
+  .panel-head h2 { font-family: var(--serif); font-size: 20px; letter-spacing: .02em; margin-top: 4px; }
+  .panel-hint { margin-top: 8px; font-size: 11.5px; color: var(--faint); line-height: 1.65; }
+  .panel-meta { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+
+  /* ---------- 录入 ---------- */
+  .entry-panel .panel-head { align-items: flex-end; }
+  .date-field {
+    display: flex; flex-direction: column; gap: 4px;
+    font-size: 9.5px; letter-spacing: .1em; color: var(--faint);
+  }
+  .date-field input {
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--paper);
+    border-radius: 6px; padding: 5px 8px; font-family: var(--mono);
+    font-size: 11.5px; color-scheme: dark;
+  }
+  .entry-section { margin-top: 18px; }
+  .entry-section + .entry-section { padding-top: 14px; border-top: 1px dashed var(--line-soft); }
+  .entry-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .entry-head h3 { font-family: var(--serif); font-size: 16px; }
+  .entry-head .en {
+    font-family: var(--mono); font-size: 9px; letter-spacing: .14em;
+    color: var(--faint); text-transform: uppercase;
+  }
+  .entry-head .meta {
+    margin-left: auto; font-family: var(--mono); font-size: 9.5px;
+    color: var(--faint); white-space: nowrap;
+  }
+  .row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto 46px;
+    align-items: center; gap: 8px; padding: 7px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .row:last-child { border-bottom: 0; }
+  .row-name { font-size: 13px; display: flex; align-items: baseline; gap: 6px; }
+  .row-name .q { font-family: var(--mono); font-size: 9.5px; color: var(--faint); white-space: nowrap; }
+  .row-input { display: flex; align-items: baseline; gap: 3px; }
+  .row-input input {
+    width: 52px; padding: 1px 3px; text-align: right;
+    background: transparent; border: 0; border-bottom: 1px solid var(--line);
+    border-radius: 0; color: var(--paper); font-family: var(--mono);
+    font-size: 15px; font-variant-numeric: tabular-nums;
+  }
+  .row-input input::placeholder { color: var(--faint); }
+  .row-input input:hover { border-bottom-color: var(--faint); }
+  .row-input input:focus-visible { outline: none; border-bottom-color: var(--emerald-hi); }
+  .row-input .of { font-family: var(--mono); font-size: 9.5px; color: var(--faint); }
+  .pill { font-family: var(--mono); font-size: 10px; text-align: right; color: var(--faint); }
+  .pill.bad { color: var(--red); }
+  .pill.good { color: var(--emerald-hi); }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+  .entry-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+  /* ---------- 诊断 ---------- */
+  .diag-top {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 14px; margin-top: 14px; flex-wrap: wrap;
+  }
+  .diag-big { font-family: var(--mono); font-size: 50px; line-height: 1; letter-spacing: -.03em; }
+  .diag-den { font-size: 13px; color: var(--faint); margin-left: 5px; }
+  .diag-sub { margin-top: 6px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+  .diag-gap { text-align: right; font-family: var(--mono); }
+  .diag-gap .target-line { font-size: 10.5px; color: var(--faint); }
+  .diag-gap strong { display: block; margin-top: 3px; font-size: 15px; font-weight: 500; }
+  .diag-gap strong.bad { color: var(--red); }
+  .diag-gap strong.good { color: var(--emerald-hi); }
+
+  .rx-list { list-style: none; margin-top: 12px; }
+  .rx {
+    display: grid; grid-template-columns: 26px minmax(0, 1fr) auto;
+    gap: 9px; padding: 11px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .rx:last-child { border-bottom: 0; }
+  .rx-rank { font-family: var(--mono); font-size: 10px; color: var(--faint); padding-top: 3px; }
+  .rx-title { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+  .rx-title h3 { font-family: var(--serif); font-size: 16px; }
+  .rx-meta { margin-top: 3px; font-size: 11px; color: var(--dim); }
+  .rx-tip { margin-top: 4px; font-size: 11.5px; line-height: 1.6; color: #A6B5AC; }
+  .rx-gain { font-family: var(--mono); font-size: 16px; color: var(--emerald-hi); text-align: right; white-space: nowrap; }
+  .rx-gain span { display: block; font-size: 8.5px; color: var(--faint); font-weight: 400; }
+  .all-met {
+    margin-top: 14px; padding: 14px; border: 1px solid var(--line-soft);
+    border-radius: 8px; font-family: var(--serif); font-size: 15px;
+  }
+  .met-line { margin-top: 10px; font-size: 10.5px; color: var(--faint); line-height: 1.7; }
+
+  .tag {
+    font-family: var(--mono); font-size: 8.5px; color: var(--dim);
+    border: 1px solid var(--line); border-radius: 3px; padding: 0 4px;
+  }
+  .empty-state {
+    padding: 26px 8px; text-align: center; color: var(--faint);
+    font-size: 11.5px; line-height: 1.8;
+  }
+  .empty-state strong {
+    display: block; font-family: var(--serif); font-size: 16px;
+    color: var(--paper); margin-bottom: 4px; font-weight: 600;
+  }
+  .empty-state .btn { margin-top: 12px; }
+
+  /* ---------- 趋势 ---------- */
+  .metric-switch { display: flex; gap: 3px; flex-wrap: wrap; }
+  .metric-btn {
+    font-family: var(--mono); font-size: 10px; padding: 4px 7px;
+    border-radius: 5px; border: 1px solid transparent; color: var(--faint);
+  }
+  .metric-btn:hover { color: var(--paper); }
+  .metric-btn.is-active {
+    background: var(--emerald-soft); color: var(--emerald-hi);
+    border-color: rgba(63, 138, 114, .45);
+  }
+  .chart-wrap { position: relative; margin-top: 8px; }
+  #chart-canvas { width: 100%; min-height: 220px; }
+  #chart-canvas svg { display: block; width: 100%; height: auto; }
+  .chart-tooltip {
+    position: absolute; z-index: 6; pointer-events: none;
+    background: #15241E; border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 8px;
+    font-family: var(--mono); font-size: 10px; color: var(--paper);
+    white-space: nowrap; transform: translate(-50%, -118%);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
+  }
+
+  /* ---------- 薄弱项 ---------- */
+  .weak-summary { margin-top: 12px; font-size: 10.5px; color: var(--faint); line-height: 1.7; }
+  .weak-summary .red { color: var(--red); }
+  .weak-list { margin-top: 6px; }
+  .weak-row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .weak-row:last-child { border-bottom: 0; }
+  .weak-row.flagged { background: linear-gradient(90deg, rgba(210, 106, 92, .06), transparent 70%); }
+  .weak-title { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+  .weak-flag {
+    font-size: 8.5px; color: var(--red); background: var(--red-soft);
+    border: 1px solid rgba(210, 106, 92, .35); border-radius: 3px; padding: 0 4px;
+  }
+  .weak-meter { height: 3px; background: #1A2A22; border-radius: 2px; margin-top: 5px; overflow: hidden; }
+  .weak-meter span { display: block; height: 100%; background: var(--emerald); border-radius: 2px; }
+  .weak-row.flagged .weak-meter span { background: var(--red); }
+  .weak-rate { font-family: var(--mono); text-align: right; font-size: 10.5px; color: var(--dim); }
+  .weak-rate strong { display: block; font-size: 12.5px; color: var(--paper); font-weight: 500; }
+  .weak-rate span { font-size: 8.5px; color: var(--faint); }
+  .weak-row.flagged .weak-rate strong { color: var(--red); }
+
+  /* ---------- 历史 ---------- */
+  .history-panel { margin-top: 20px; }
+  .table-wrap { width: 100%; }
+  .history-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11.5px; }
+  .history-table th {
+    font-family: var(--mono); font-size: 9px; letter-spacing: .08em; font-weight: 400;
+    color: var(--faint); text-align: left; padding: 6px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .history-table td {
+    padding: 7px 8px; border-bottom: 1px solid var(--line-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .history-table tr:last-child td { border-bottom: 0; }
+  .history-table th.num, .history-table td.num { text-align: right; font-family: var(--mono); }
+  .history-table td.date { color: var(--dim); }
+  .history-table .link-danger {
+    font-size: 10.5px; color: var(--faint); padding: 2px 4px; border-radius: 4px;
+  }
+  .history-table .link-danger:hover { color: var(--red); background: var(--red-soft); }
+  .history-table th.actions, .history-table td.actions { text-align: right; width: 46px; }
+
+  /* ---------- 页脚 ---------- */
+  .footer {
+    margin-top: 24px; padding: 13px 0 26px; border-top: 1px solid var(--line-soft);
+    display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    font-size: 10px; color: var(--faint); line-height: 1.7;
+  }
+  .storage-warning { color: var(--red); }
+
+  /* ---------- 弹窗 / 提示 ---------- */
+  dialog {
+    border: 1px solid var(--line); background: var(--panel); color: var(--paper);
+    border-radius: 12px; padding: 0; width: min(420px, calc(100vw - 28px));
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
+  }
+  dialog::backdrop { background: rgba(4, 10, 7, .72); }
+  .dialog-body { padding: 20px; }
+  .dialog-body h3 { font-family: var(--serif); font-size: 19px; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; font-size: 10.5px; color: var(--dim); }
+  .field input {
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--paper);
+    border-radius: 6px; padding: 8px 10px; font-size: 13px;
+  }
+  .field input:focus-visible { outline: none; border-color: var(--emerald-hi); }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    z-index: 60; max-width: calc(100vw - 28px);
+    background: #15241E; border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 14px; font-size: 11.5px; color: var(--paper);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .4);
+  }
+  .toast.error { border-color: rgba(210, 106, 92, .55); color: #F0C9C3; }
+
+  /* ---------- 响应式 ---------- */
+  @media (max-width: 980px) {
+    .workspace, .bottom { grid-template-columns: 1fr; }
+    .topbar { align-items: flex-start; flex-direction: column; gap: 14px; }
+    .page { padding: 0 20px 28px; }
+    .student-note { text-align: left; flex-basis: 100%; }
+  }
+  @media (max-width: 720px) {
+    .page { padding: 0 14px 24px; }
+    .panel { padding: 17px; }
+    .brand h1 { font-size: 24px; }
+    .diag-big { font-size: 42px; }
+    .sec-col { display: none; }
+    .metric-switch { gap: 2px; }
+    .metric-btn { font-size: 9.5px; padding: 4px 6px; }
+    .entry-head .meta { white-space: normal; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+
+  /* ---------- 710 分尺 ---------- */
+  .ruler-panel { margin-bottom: 18px; }
+  .ruler-legend { font-size: 12px; color: var(--faint); }
+  .ruler { display: flex; gap: 8px; margin-top: 16px; }
+  .rseg { flex: 1 1 0; min-width: 0; }
+  .rseg-head { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--dim); }
+  .rseg-head .w { color: var(--faint); font-variant-numeric: tabular-nums; }
+  .rtrack {
+    position: relative; height: 44px; margin-top: 6px; border-radius: 4px;
+    background: var(--panel-2); overflow: hidden;
+  }
+  .rfill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: linear-gradient(180deg, var(--emerald-hi), var(--emerald));
+    transition: width .4s ease;
+  }
+  .rgap {
+    position: absolute; top: 0; bottom: 0;
+    background-image: repeating-linear-gradient(135deg,
+      rgba(210, 106, 92, .5) 0 3px, rgba(210, 106, 92, .10) 3px 7px);
+    transition: left .4s ease, width .4s ease;
+  }
+  .rmark {
+    position: absolute; top: -2px; bottom: -2px; width: 0;
+    border-left: 1.5px dashed rgba(233, 230, 218, .65);
+  }
+  .rseg-pts { margin-top: 6px; font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .rseg-pts span { color: var(--faint); }
+  @media (max-width: 720px) {
+    .ruler { flex-wrap: wrap; gap: 14px 8px; }
+    .rseg { flex: 1 1 45%; }
+  }
+
+  /* ---------- 打印报告 ---------- */
+  .print-report { display: none; }
+
+  @media print {
+    @page { size: A4 portrait; margin: 10mm; }
+    html, body {
+      background: #fff !important;
+      color: #17211C !important;
+      overflow: visible !important;
+    }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .app, .toast, dialog { display: none !important; }
+
+    #print-report {
+      display: block !important;
+      color: #17211C;
+      background: #fff;
+      font-family: var(--sans);
+      font-size: 9.5pt;
+      line-height: 1.45;
+    }
+    #print-report .report {
+      width: 100%; max-width: 190mm; margin: 0 auto;
+      max-height: 277mm; overflow: hidden;
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    #print-report .report-top {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 2px solid #2F6F5B; padding-bottom: 1.6mm;
+      font-size: 8.5pt; color: #5C6B63;
+    }
+    #print-report .report-brand { font-family: var(--mono); letter-spacing: .16em; color: #2F6F5B; }
+    #print-report h1 {
+      font-family: var(--serif); font-size: 19pt; line-height: 1.2;
+      margin: 2.2mm 0 1mm; color: #17211C;
+    }
+    #print-report .report-note { font-size: 8.8pt; color: #5C6B63; margin-bottom: 1mm; }
+    #print-report .report-coverage { font-size: 8.4pt; color: #6A7A71; margin: 0 0 1.6mm; }
+    #print-report .report-table-note { font-size: 7.8pt; color: #6A7A71; margin-top: 1mm; }
+    #print-report h2 {
+      font-family: var(--serif); font-size: 11pt; color: #17211C;
+      margin: 3.6mm 0 1.6mm; padding-bottom: .8mm;
+      border-bottom: 1px solid #D8E2DC;
+    }
+    #print-report .report-summary {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm;
+      margin: 2.6mm 0 1mm;
+    }
+    #print-report .report-summary div {
+      border: 1px solid #D8E2DC; border-radius: 1.6mm; padding: 1.7mm 2mm;
+    }
+    #print-report .report-summary span { display: block; font-size: 7.8pt; color: #6A7A71; }
+    #print-report .report-summary strong {
+      font-family: var(--mono); font-size: 15pt; font-weight: 600; color: #17211C;
+    }
+    #print-report .report-summary em { font-style: normal; font-size: 7.5pt; color: #6A7A71; margin-left: 1mm; }
+    #print-report .report-table { width: 100%; border-collapse: collapse; font-size: 8.6pt; }
+    #print-report .report-table th {
+      text-align: left; font-weight: 600; color: #4E5E55;
+      background: #F1F6F3; padding: 1.3mm 1.8mm; border-bottom: 1px solid #D8E2DC;
+    }
+    #print-report .report-table td {
+      padding: 1.3mm 1.8mm; border-bottom: 1px solid #E2EAE5;
+      font-variant-numeric: tabular-nums;
+    }
+    #print-report .report-table td.num, #print-report .report-table th.num { text-align: right; font-family: var(--mono); }
+    #print-report .report-recs { list-style: none; padding: 0; margin: 0; }
+    #print-report .report-recs li {
+      padding: 1.5mm 0; border-bottom: 1px solid #E2EAE5;
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    #print-report .report-recs li:last-child { border-bottom: 0; }
+    #print-report .rr-head { display: flex; justify-content: space-between; gap: 4mm; align-items: baseline; }
+    #print-report .rr-head strong { font-size: 9.4pt; color: #17211C; }
+    #print-report .rr-head em {
+      font-style: normal; font-family: var(--mono); font-size: 9.6pt;
+      font-weight: 600; color: #2F6F5B; white-space: nowrap;
+    }
+    #print-report .rr-meta { font-size: 8pt; color: #6A7A71; margin-top: .3mm; }
+    #print-report .rr-tip { font-size: 8.4pt; color: #3C4B43; margin-top: .5mm; }
+    #print-report .report-chart svg { width: 100%; height: 40mm; display: block; }
+    #print-report .report-foot {
+      margin-top: 1.6mm; padding-top: 1.2mm; border-top: 1px solid #E2EAE5;
+      font-size: 7.2pt; color: #8A9890; text-align: center;
+    }
+    #print-report .report-empty { font-size: 8.6pt; color: #6A7A71; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <p class="eyebrow">SUGE EDUCATION · CET SCORE CLINIC</p>
+        <h1>舒格教育 · 四六级分数诊断</h1>
+      </div>
+      <div class="top-actions">
+        <div class="exam-switch" role="group" aria-label="选择考试类型">
+          <button type="button" class="exam-btn is-active" data-exam="cet4" aria-pressed="true">CET-4</button>
+          <button type="button" class="exam-btn" data-exam="cet6" aria-pressed="false">CET-6</button>
+        </div>
+        <button type="button" class="btn primary" id="print-btn" disabled>生成报告</button>
+      </div>
+    </header>
+
+    <div class="student-bar">
+      <div class="student-picker">
+        <span class="field-label">当前学生</span>
+        <select id="student-select" aria-label="选择学生"></select>
+        <button type="button" class="btn small" id="new-student">新建</button>
+        <button type="button" class="btn small" id="edit-student" disabled>编辑</button>
+        <button type="button" class="btn small danger-ghost" id="delete-student" disabled>删除</button>
+      </div>
+      <p class="student-note" id="student-note-text">先新建一个学生开始。</p>
+    </div>
+
+    <section class="panel ruler-panel" aria-labelledby="ruler-title">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">00 · Scale</p>
+          <h2 id="ruler-title">710 分尺</h2>
+        </div>
+        <p class="ruler-legend">实色＝已得分数 · 斜纹＝缺口 · 虚线＝目标位</p>
+      </div>
+      <div class="ruler" id="ruler" aria-live="polite"></div>
+    </section>
+
+    <main class="workspace">
+      <section class="panel entry-panel" aria-labelledby="entry-title">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">01 · 录入</p>
+            <h2 id="entry-title">本次模考分数</h2>
+          </div>
+          <label class="date-field">考试日期
+            <input type="date" id="attempt-date">
+          </label>
+        </div>
+        <p class="panel-hint">客观题填答对题数，写作与翻译填 15 分制得分。留空的题型不参与本次诊断。</p>
+        <div id="entry-body"></div>
+        <div class="entry-actions">
+          <button type="button" class="btn primary" id="save-attempt" disabled>保存本次记录</button>
+          <button type="button" class="btn" id="clear-entry" disabled>清空</button>
+        </div>
+      </section>
+
+      <section class="panel diagnosis-panel" aria-labelledby="diag-title">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">02 · 诊断</p>
+            <h2 id="diag-title">本次诊断</h2>
+          </div>
+        </div>
+        <p class="panel-hint">按“补到目标能拿回多少分”排序，而不是按百分比排序。</p>
+        <div id="diagnosis-body"></div>
+      </section>
+    </main>
+
+    <div class="bottom">
+      <section class="panel chart-panel" aria-labelledby="chart-title">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">03 · 趋势</p>
+            <h2 id="chart-title">成绩走势</h2>
+          </div>
+          <div class="metric-switch" role="group" aria-label="选择趋势指标">
+            <button type="button" class="metric-btn is-active" data-metric="composite">总分</button>
+            <button type="button" class="metric-btn" data-metric="listening">听力</button>
+            <button type="button" class="metric-btn" data-metric="reading">阅读</button>
+            <button type="button" class="metric-btn" data-metric="writing">写作</button>
+            <button type="button" class="metric-btn" data-metric="translation">翻译</button>
+          </div>
+        </div>
+        <p class="panel-hint" id="chart-sub">按记录顺序 · 虚线为目标线</p>
+        <div class="chart-wrap" id="chart-wrap">
+          <div id="chart-canvas"></div>
+          <div class="chart-tooltip" id="chart-tooltip" hidden></div>
+        </div>
+      </section>
+
+      <section class="panel weak-panel" aria-labelledby="weak-title">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">04 · 追踪</p>
+            <h2 id="weak-title">薄弱项追踪</h2>
+          </div>
+        </div>
+        <p class="panel-hint">连续 3 次低于目标标红；右侧为达标次数 / 有记录的次数。</p>
+        <div id="weak-body"></div>
+      </section>
+    </div>
+
+    <section class="panel history-panel" aria-labelledby="history-title">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">05 · 记录</p>
+          <h2 id="history-title">历史记录</h2>
+        </div>
+        <p class="panel-meta" id="history-meta"></p>
+      </div>
+      <div id="history-body"></div>
+    </section>
+
+    <footer class="footer">
+      <span>数据仅保存在本机浏览器（localStorage），不会上传 · 技术支持：Hikelz</span>
+      <span class="storage-warning" id="storage-status" hidden>本地存储不可用，刷新后数据会丢失。</span>
+    </footer>
+  </div>
+</div>
+
+<section id="print-report" class="print-report" aria-hidden="true"></section>
+
+<dialog id="student-dialog">
+  <form id="student-form" class="dialog-body">
+    <h3 id="dialog-title">新建学生</h3>
+    <label class="field">姓名
+      <input id="student-name" type="text" maxlength="24" required autocomplete="off" placeholder="例如：张同学">
+    </label>
+    <label class="field">备注
+      <input id="student-note" type="text" maxlength="60" autocomplete="off" placeholder="例如：目标 CET-6 550，周三晚课">
+    </label>
+    <div class="dialog-actions">
+      <button type="button" class="btn" data-close>取消</button>
+      <button type="submit" class="btn primary">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+
+<script>
+/* ============================================================
+   1. 计分配置
+   ============================================================ */
+const CONFIG = {
+  total: 710,
+  exams: {
+    cet4: {
+      label: "CET-4",
+      sections: [
+        {
+          id: "listening", name: "听力", en: "Listening", weight: 0.35,
+          types: [
+            { id: "c4-news", name: "短篇新闻", max: 7, weight: 0.07, target: 0.75,
+              tip: "先读题干圈出人名、数字和转折词，新闻首句常带主旨；错题只回放答案句。" },
+            { id: "c4-conv", name: "长对话", max: 8, weight: 0.08, target: 0.75,
+              tip: "预读选项判断场景，抓第二个说话人的回答；题目顺序与原文一致，按顺序定位。" },
+            { id: "c4-passage", name: "听力篇章", max: 10, weight: 0.20, target: 0.75,
+              tip: "抓开头结论、中间例证、结尾态度；每篇错 2 题以上就整篇精听。" }
+          ]
+        },
+        {
+          id: "reading", name: "阅读", en: "Reading", weight: 0.35,
+          types: [
+            { id: "c4-cloze", name: "选词填空", max: 10, weight: 0.05, target: 0.85,
+              tip: "先标 15 个候选词的词性，再按空定词性、按句定词义；控制在 8 分钟内。" },
+            { id: "c4-match", name: "长篇匹配", max: 10, weight: 0.10, target: 0.85,
+              tip: "先读题干抓独特名词和数字回文定位，优先匹配段落首尾句；限时 12 分钟。" },
+            { id: "c4-careful", name: "仔细阅读", max: 10, weight: 0.20, target: 0.85,
+              tip: "题干定位加同义替换识别；错题标注原因：定位错、没看出替换，还是被干扰项带偏。" }
+          ]
+        },
+        {
+          id: "writing", name: "写作", en: "Writing", weight: 0.15,
+          types: [
+            { id: "c4-writing", name: "写作", max: 15, weight: 0.15, target: 0.75,
+              tip: "背熟三段式骨架与热点素材；每周限时 1 篇，对照范文只改结构和连接词。" }
+          ]
+        },
+        {
+          id: "translation", name: "翻译", en: "Translation", weight: 0.15,
+          types: [
+            { id: "c4-trans", name: "翻译", max: 15, weight: 0.15, target: 0.70,
+              tip: "先拆主干再补修饰，文化词整理成固定译法；每周精译 1 段对照参考译文。" }
+          ]
+        }
+      ]
+    },
+    cet6: {
+      label: "CET-6",
+      sections: [
+        {
+          id: "listening", name: "听力", en: "Listening", weight: 0.35,
+          types: [
+            { id: "c6-conv", name: "长对话", max: 8, weight: 0.08, target: 0.75,
+              tip: "预读选项判断场景，抓第二个说话人的回答；漏掉一题就果断跳下一题。" },
+            { id: "c6-passage", name: "听力篇章", max: 7, weight: 0.07, target: 0.75,
+              tip: "抓段落主题句和信号词；错题回听对应段落，而不是整篇重听。" },
+            { id: "c6-lecture", name: "讲座讲话", max: 10, weight: 0.20, target: 0.75,
+              tip: "讲座题考结构与态度：笔记只记论点与例子对应，先听结构再听细节。" }
+          ]
+        },
+        {
+          id: "reading", name: "阅读", en: "Reading", weight: 0.35,
+          types: [
+            { id: "c6-cloze", name: "选词填空", max: 10, weight: 0.05, target: 0.85,
+              tip: "先标 15 个候选词的词性，再按空定词性、按句定词义；控制在 8 分钟内。" },
+            { id: "c6-match", name: "长篇匹配", max: 10, weight: 0.10, target: 0.85,
+              tip: "先读题干抓独特名词和数字回文定位，优先匹配段落首尾句；限时 12 分钟。" },
+            { id: "c6-careful", name: "仔细阅读", max: 10, weight: 0.20, target: 0.85,
+              tip: "题干定位加同义替换识别；错题标注原因：定位错、没看出替换，还是被干扰项带偏。" }
+          ]
+        },
+        {
+          id: "writing", name: "写作", en: "Writing", weight: 0.15,
+          types: [
+            { id: "c6-writing", name: "写作", max: 15, weight: 0.15, target: 0.75,
+              tip: "六级重论证：观点句加例证再让步；每周限时 1 篇，重点改论证是否成立。" }
+          ]
+        },
+        {
+          id: "translation", name: "翻译", en: "Translation", weight: 0.15,
+          types: [
+            { id: "c6-trans", name: "翻译", max: 15, weight: 0.15, target: 0.70,
+              tip: "长句先断再合，避免逐字直译；积累中国文化固定表达，每周精译 1 段。" }
+          ]
+        }
+      ]
+    }
+  }
+};
+
+/* ============================================================
+   2. 通用工具
+   ============================================================ */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+function esc(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[ch]);
+}
+
+const pad2 = n => String(n).padStart(2, "0");
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function isValidDate(str) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
+  const d = new Date(str + "T00:00:00");
+  return !Number.isNaN(d.getTime());
+}
+function uid() {
+  return "s_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+}
+
+const fmt0 = v => (v === null || v === undefined || !Number.isFinite(v)) ? "—" : String(Math.round(v));
+const fmt1 = v => (v === null || v === undefined || !Number.isFinite(v)) ? "—"
+  : (Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, "");
+const pctText = v => (v === null || v === undefined || !Number.isFinite(v)) ? "—" : Math.round(v * 100) + "%";
+
+function gapInfo(diff) {
+  const abs = Math.abs(diff);
+  if (!Number.isFinite(abs) || abs < 0.05) {
+    return { cls: "good", text: "正好达标", prefix: "", value: "0" };
+  }
+  const prefix = diff > 0 ? "差" : "高";
+  return {
+    cls: diff > 0 ? "bad" : "good",
+    text: `${prefix} ${fmt1(abs)} 分`,
+    prefix,
+    value: fmt1(abs)
+  };
+}
+
+let toastTimer = null;
+function showToast(message, type = "") {
+  const toast = $("#toast");
+  if (!toast) return;
+  toast.textContent = message;
+  toast.className = "toast" + (type === "error" ? " error" : "");
+  toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, 2400);
+}
+
+/* ============================================================
+   3. 评分引擎（纯函数）
+   ============================================================ */
+function sectionTarget(sec) {
+  const w = sec.types.reduce((sum, t) => sum + t.weight, 0);
+  return w ? sec.types.reduce((sum, t) => sum + t.weight * t.target, 0) / w : 0;
+}
+
+function fullTargetComposite(exam) {
+  let weight = 0, weightedTarget = 0;
+  exam.sections.forEach(sec => sec.types.forEach(t => {
+    weight += t.weight;
+    weightedTarget += t.weight * t.target;
+  }));
+  return weight ? CONFIG.total * weightedTarget / weight : 0;
+}
+
+function scoreOf(raw, max) {
+  if (raw === null || raw === undefined) return null;
+  const str = typeof raw === "string" ? raw.trim() : raw;
+  if (str === "") return null;
+  let n = Number(str);
+  if (!Number.isFinite(n)) return null;
+  // 客观题按答对题数计，取整数；写作/翻译为 15 分制，允许 0.5
+  if (max !== 15) n = Math.round(n);
+  return clamp(n, 0, max);
+}
+
+function computeAnalysis(exam, scores) {
+  scores = scores || {};
+  const candidates = [];
+  const met = [];
+  let enteredWeight = 0, accWeighted = 0, targetWeighted = 0;
+  let enteredCount = 0, totalTypes = 0;
+
+  const sections = exam.sections.map(sec => {
+    let wSum = 0, accW = 0, secEntered = 0;
+
+    const types = sec.types.map(t => {
+      totalTypes++;
+      const value = scoreOf(scores[t.id], t.max);
+      const entered = value !== null;
+      const acc = entered ? clamp(value / t.max, 0, 1) : null;
+
+      if (entered) {
+        enteredCount++;
+        secEntered++;
+        wSum += t.weight;
+        accW += t.weight * acc;
+        enteredWeight += t.weight;
+        accWeighted += t.weight * acc;
+        targetWeighted += t.weight * t.target;
+
+        const gain = (t.target - acc) * t.weight * CONFIG.total;
+        const item = {
+          id: t.id, name: t.name, section: sec.name,
+          acc, target: t.target, gain, tip: t.tip
+        };
+        if (gain > 0) candidates.push(item);
+        else met.push(item);
+      }
+
+      return { ...t, value, acc, entered };
+    });
+
+    const targetAcc = sectionTarget(sec);
+    const maxPoints = sec.weight * CONFIG.total;
+    return {
+      id: sec.id, name: sec.name, weight: sec.weight, types,
+      acc: wSum ? accW / wSum : null,
+      // 部分得分以“已得分数 / 该部分满分”呈现；综合分另行按已录入权重归一化
+      points: wSum ? accW * CONFIG.total : null,
+      maxPoints,
+      targetAcc,
+      targetPoints: maxPoints * targetAcc,
+      enteredCount: secEntered
+    };
+  });
+
+  candidates.sort((a, b) => b.gain - a.gain);
+
+  return {
+    sections, candidates, met,
+    composite: enteredWeight ? CONFIG.total * accWeighted / enteredWeight : null,
+    targetComposite: enteredWeight ? CONFIG.total * targetWeighted / enteredWeight : null,
+    coverage: enteredWeight,
+    enteredCount, totalTypes
+  };
+}
+
+function sortAttempts(list, dir = "desc") {
+  const arr = [...(list || [])].sort((a, b) => {
+    const da = a.date || "", db = b.date || "";
+    if (da !== db) return da < db ? -1 : 1;
+    return (a.savedAt || 0) - (b.savedAt || 0);
+  });
+  if (dir === "desc") arr.reverse();
+  return arr;
+}
+
+/* ============================================================
+   4. 本地存储（版本化 key）
+   ============================================================ */
+const STORAGE_KEY = "cet-score-clinic:v1";
+const STORE_VERSION = 1;
+let storageAvailable = true;
+
+function emptyStore() {
+  return { version: STORE_VERSION, students: [], activeStudentId: null, activeExam: "cet4" };
+}
+
+function markStorageUnavailable() {
+  if (!storageAvailable) return;
+  storageAvailable = false;
+  const status = $("#storage-status");
+  if (status) { status.hidden = false; }
+}
+
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return emptyStore();
+    const data = JSON.parse(raw);
+    if (!data || data.version !== STORE_VERSION || !Array.isArray(data.students)) return emptyStore();
+
+    data.students = data.students.filter(s => s && typeof s.id === "string" && typeof s.name === "string");
+    data.students.forEach(s => {
+      s.note = typeof s.note === "string" ? s.note : "";
+      s.attempts = s.attempts && typeof s.attempts === "object" ? s.attempts : {};
+      ["cet4", "cet6"].forEach(k => {
+        if (!Array.isArray(s.attempts[k])) s.attempts[k] = [];
+      });
+      ["cet4", "cet6"].forEach(k => {
+        s.attempts[k] = s.attempts[k].filter(a => a && typeof a.id === "string" && a.scores && typeof a.scores === "object");
+      });
+    });
+    data.activeExam = data.activeExam === "cet6" ? "cet6" : "cet4";
+    if (!data.students.some(s => s.id === data.activeStudentId)) {
+      data.activeStudentId = data.students.length ? data.students[0].id : null;
+    }
+    return data;
+  } catch (err) {
+    console.warn("读取本地数据失败", err);
+    markStorageUnavailable();
+    return emptyStore();
+  }
+}
+
+let store = loadStore();
+
+function persist() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  } catch (err) {
+    console.warn("写入本地数据失败", err);
+    markStorageUnavailable();
+  }
+}
+
+/* ============================================================
+   5. 运行时状态
+   ============================================================ */
+let draftDate = todayISO();
+let chartMetric = "composite";
+let editingStudentId = null;
+let chartPoints = [];
+let chartPinned = false;
+let chartPinnedIndex = null;
+
+const entryBody = $("#entry-body");
+const historyBody = $("#history-body");
+const weakBody = $("#weak-body");
+const chartCanvas = $("#chart-canvas");
+
+function activeStudent() {
+  return store.students.find(s => s.id === store.activeStudentId) || null;
+}
+function activeExam() {
+  return CONFIG.exams[store.activeExam];
+}
+
+/* ============================================================
+   6. 学生管理
+   ============================================================ */
+function renderStudentBar() {
+  const select = $("#student-select");
+  const note = $("#student-note-text");
+  const editBtn = $("#edit-student");
+  const deleteBtn = $("#delete-student");
+  const students = store.students;
+
+  if (!students.length) {
+    select.innerHTML = '<option value="">尚无学生</option>';
+    select.disabled = true;
+    note.textContent = "先新建一个学生开始。";
+    editBtn.disabled = true;
+    deleteBtn.disabled = true;
+    return;
+  }
+
+  select.disabled = false;
+  select.innerHTML = students.map(s =>
+    `<option value="${esc(s.id)}">${esc(s.name)}</option>`
+  ).join("");
+  select.value = store.activeStudentId || students[0].id;
+
+  const s = activeStudent();
+  editBtn.disabled = !s;
+  deleteBtn.disabled = !s;
+  note.textContent = s ? (s.note || "未填写备注") : "";
+}
+
+function openStudentDialog(studentId) {
+  editingStudentId = studentId || null;
+  const s = studentId ? store.students.find(x => x.id === studentId) : null;
+  $("#dialog-title").textContent = s ? "编辑学生" : "新建学生";
+  $("#student-name").value = s ? s.name : "";
+  $("#student-note").value = s ? s.note : "";
+  const dialog = $("#student-dialog");
+  if (typeof dialog.showModal === "function") dialog.showModal();
+  setTimeout(() => $("#student-name").focus(), 0);
+}
+
+function submitStudentForm(event) {
+  event.preventDefault();
+  const name = $("#student-name").value.trim();
+  const note = $("#student-note").value.trim();
+  if (!name) { $("#student-name").focus(); return; }
+
+  const wasEditing = !!editingStudentId;
+
+  if (wasEditing) {
+    const s = store.students.find(x => x.id === editingStudentId);
+    if (s) { s.name = name; s.note = note; }
+    showToast("学生信息已更新");
+  } else {
+    const s = {
+      id: uid(), name, note, createdAt: Date.now(),
+      attempts: { cet4: [], cet6: [] }
+    };
+    store.students.push(s);
+    store.activeStudentId = s.id;
+    showToast("已创建学生");
+  }
+
+  persist();
+  $("#student-dialog").close();
+  editingStudentId = null;
+  clearPrintReport();
+
+  // 改名只刷新学生栏，避免清空正在录入但尚未保存的分数
+  if (wasEditing) {
+    renderStudentBar();
+  } else {
+    resetDraftDate();
+    renderAll();
+  }
+}
+
+function deleteActiveStudent() {
+  const s = activeStudent();
+  if (!s) return;
+  if (!confirm(`确定删除「${s.name}」及其全部模考记录？此操作不可撤销。`)) return;
+  store.students = store.students.filter(x => x.id !== s.id);
+  store.activeStudentId = store.students.length ? store.students[0].id : null;
+  persist();
+  resetDraftDate();
+  renderAll();
+  showToast("学生已删除");
+}
+
+function switchStudent(id) {
+  if (!id || id === store.activeStudentId) return;
+  store.activeStudentId = id;
+  persist();
+  resetDraftDate();
+  renderAll();
+}
+
+/* ============================================================
+   7. 录入与本次诊断
+   ============================================================ */
+function resetDraftDate() {
+  draftDate = todayISO();
+  const input = $("#attempt-date");
+  if (input) input.value = draftDate;
+}
+
+function rowHTML(t) {
+  const unit = t.max === 15 ? "15 分制" : t.max + " 题";
+  return `
+    <div class="row">
+      <label class="row-name" for="in-${t.id}">${esc(t.name)}<span class="q">${unit}</span></label>
+      <div class="row-input">
+        <input id="in-${t.id}" data-type="${t.id}" data-max="${t.max}" data-name="${esc(t.name)}"
+               type="number" inputmode="decimal" min="0" max="${t.max}" step="${t.max === 15 ? 0.5 : 1}"
+               placeholder="—" aria-label="${esc(t.name)}（满分 ${t.max}）">
+        <span class="of">/ ${t.max}</span>
+      </div>
+      <span class="pill" id="pill-${t.id}">未录</span>
+    </div>`;
+}
+
+function renderEntry() {
+  const s = activeStudent();
+  const dateInput = $("#attempt-date");
+  const saveBtn = $("#save-attempt");
+  const clearBtn = $("#clear-entry");
+
+  dateInput.disabled = !s;
+  saveBtn.disabled = !s;
+  clearBtn.disabled = !s;
+
+  if (!s) {
+    entryBody.innerHTML = `
+      <div class="empty-state">
+        <strong>还没有学生档案</strong>
+        新建学生后即可录入模考分数、生成诊断和报告。
+        <div><button type="button" class="btn primary" data-action="new-student">新建学生</button></div>
+      </div>`;
+    return;
+  }
+
+  const exam = activeExam();
+  entryBody.innerHTML = exam.sections.map(sec => `
+    <section class="entry-section">
+      <div class="entry-head">
+        <h3>${esc(sec.name)}</h3><span class="en">${esc(sec.en)}</span>
+        <p class="meta">${Math.round(sec.weight * 100)}% · ${fmt1(sec.weight * CONFIG.total)} 分 · 目标 ${pctText(sectionTarget(sec))}</p>
+      </div>
+      <div class="rows">${sec.types.map(t => rowHTML(t)).join("")}</div>
+    </section>`).join("");
+
+  syncPills();
+}
+
+function readDraftScores() {
+  const scores = {};
+  $$("input[data-type]", entryBody).forEach(inp => {
+    if (inp.value.trim() === "") return;
+    const n = Number(inp.value);
+    if (!Number.isFinite(n)) return;
+    scores[inp.dataset.type] = clamp(n, 0, Number(inp.dataset.max));
+  });
+  return scores;
+}
+
+function syncPills() {
+  $$("input[data-type]", entryBody).forEach(inp => {
+    const pill = document.getElementById("pill-" + inp.dataset.type);
+    if (!pill) return;
+    if (inp.value.trim() === "") {
+      pill.textContent = "未录";
+      pill.className = "pill";
+      return;
+    }
+    const max = Number(inp.dataset.max);
+    const value = scoreOf(inp.value, max);
+    if (value === null) { pill.textContent = "—"; pill.className = "pill"; return; }
+    const acc = clamp(value / max, 0, 1);
+    const type = findTypeInExam(activeExam(), inp.dataset.type);
+    pill.textContent = pctText(acc);
+    pill.className = "pill " + (type && acc >= type.target ? "good" : "bad");
+  });
+}
+
+function findTypeInExam(exam, typeId) {
+  for (const sec of exam.sections) {
+    for (const t of sec.types) if (t.id === typeId) return t;
+  }
+  return null;
+}
+
+function refreshDraft() {
+  syncPills();
+  renderDiagnosis();
+}
+
+function saveAttempt() {
+  const s = activeStudent();
+  if (!s) return;
+
+  const dateInput = $("#attempt-date");
+  const date = dateInput.value || draftDate;
+  if (!isValidDate(date)) { showToast("请选择有效的考试日期", "error"); return; }
+
+  const exam = activeExam();
+  const scores = {};
+  let filled = 0;
+
+  for (const inp of $$("input[data-type]", entryBody)) {
+    const raw = inp.value.trim();
+    if (raw === "") continue;
+    const max = Number(inp.dataset.max);
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0 || n > max) {
+      showToast(`「${inp.dataset.name}」应在 0–${max} 之间`, "error");
+      inp.focus();
+      return;
+    }
+    scores[inp.dataset.type] = max === 15 ? n : Math.round(n);
+    filled++;
+  }
+
+  if (!filled) { showToast("至少填写一项分数", "error"); return; }
+
+  s.attempts[store.activeExam].push({
+    id: uid(), date, scores, savedAt: Date.now()
+  });
+
+  draftDate = date;
+  persist();
+  clearPrintReport();
+  renderHistory();
+  renderWeak();
+  renderChart();
+  renderDiagnosis();
+  updatePrintButton();
+  showToast(`已保存 ${date} 的记录`);
+}
+
+function clearEntry() {
+  $$("input[data-type]", entryBody).forEach(inp => { inp.value = ""; });
+  resetDraftDate();
+  refreshDraft();
+}
+
+/* ============================================================
+   8. 诊断渲染
+   ============================================================ */
+function renderRuler(analysis) {
+  const box = document.getElementById("ruler");
+  if (!box) return;
+  if (!analysis) { box.innerHTML = ""; return; }
+
+  box.innerHTML = analysis.sections.map(sec => {
+    const max = sec.maxPoints;
+    const earned = sec.points;
+    const fillPct = earned === null ? 0 : Math.min(1, earned / max) * 100;
+    const targetPct = Math.min(1, sec.targetPoints / max) * 100;
+    const gapPct = Math.max(0, targetPct - fillPct);
+    const approx = sec.enteredCount < sec.types.length ? "≈" : "";
+    const earnedText = earned === null ? "—" : approx + earned.toFixed(1);
+
+    return `<div class="rseg">
+      <div class="rseg-head"><span>${sec.name}</span><span class="w">${Math.round(sec.weight * 100)}%</span></div>
+      <div class="rtrack" title="${sec.name}：已得 ${earned === null ? "—" : earned.toFixed(1)} / ${max.toFixed(1)} 分 · 目标 ${(sec.targetAcc * 100).toFixed(0)}%">
+        <div class="rfill" style="width:${fillPct.toFixed(2)}%"></div>
+        <div class="rgap" style="left:${fillPct.toFixed(2)}%;width:${gapPct.toFixed(2)}%"></div>
+        <div class="rmark" style="left:${targetPct.toFixed(2)}%"></div>
+      </div>
+      <div class="rseg-pts">${earnedText} <span>/ ${max.toFixed(1)}</span></div>
+    </div>`;
+  }).join("");
+}
+
+function renderDiagnosis() {
+  const body = $("#diagnosis-body");
+  const s = activeStudent();
+  if (!s) {
+    body.innerHTML = `<div class="empty-state"><strong>等待学生档案</strong>选择或新建学生后开始诊断。</div>`;
+    renderRuler(null);
+    return;
+  }
+
+  const exam = activeExam();
+  const analysis = computeAnalysis(exam, readDraftScores());
+  renderRuler(analysis);
+
+  if (analysis.coverage === 0) {
+    body.innerHTML = `<div class="empty-state"><strong>等待录入</strong>在左侧填写本次模考分数，诊断会实时更新。</div>`;
+    return;
+  }
+
+  const shown = Math.round(analysis.composite);
+  const shownTarget = Math.round(analysis.targetComposite);
+  const gap = gapInfo(analysis.targetComposite - analysis.composite);
+  const coverageText = analysis.coverage >= 0.999
+    ? "全部题型已录入"
+    : `按 ${pctText(analysis.coverage)} 权重折算`;
+
+  let html = `
+    <div class="diag-top">
+      <div>
+        <p class="diag-big">${shown}<span class="diag-den">/ 710</span></p>
+        <p class="diag-sub">综合估分 · 已录入 ${analysis.enteredCount}/${analysis.totalTypes} 项 · ${coverageText}</p>
+      </div>
+      <div class="diag-gap">
+        <p class="target-line">目标线 ${shownTarget}</p>
+        <strong class="${gap.cls}">${gap.text}</strong>
+      </div>
+    </div>`;
+
+  const top = analysis.candidates.slice(0, 4);
+  if (top.length) {
+    html += `<ol class="rx-list">` + top.map((c, i) => `
+      <li class="rx">
+        <span class="rx-rank">${String(i + 1).padStart(2, "0")}</span>
+        <div>
+          <div class="rx-title"><h3>${esc(c.name)}</h3><span class="tag">${esc(c.section)}</span></div>
+          <p class="rx-meta">当前 ${pctText(c.acc)} → 目标 ${pctText(c.target)}</p>
+          <p class="rx-tip">${esc(c.tip)}</p>
+        </div>
+        <div class="rx-gain">+${fmt1(c.gain)}<span>可追回</span></div>
+      </li>`).join("") + `</ol>`;
+  } else {
+    html += `<div class="all-met">本次录入的题型均已达到目标线。</div>`;
+  }
+
+  if (analysis.met.length) {
+    html += `<p class="met-line">已达标：${analysis.met.map(m => `${esc(m.name)} ${pctText(m.acc)}`).join("、")}</p>`;
+  }
+
+  body.innerHTML = html;
+}
+
+/* ============================================================
+   9. 历史记录
+   ============================================================ */
+function renderHistory() {
+  const s = activeStudent();
+  const meta = $("#history-meta");
+
+  if (!s) {
+    meta.textContent = "";
+    historyBody.innerHTML = `<div class="empty-state"><strong>暂无记录</strong>新建学生并保存一次模考后，这里会出现历史记录。</div>`;
+    return;
+  }
+
+  const exam = activeExam();
+  const attempts = sortAttempts(s.attempts[store.activeExam], "desc");
+  meta.textContent = `${exam.label} · ${attempts.length} 次`;
+
+  if (!attempts.length) {
+    historyBody.innerHTML = `<div class="empty-state"><strong>还没有${esc(exam.label)}记录</strong>录入分数并点击“保存本次记录”。</div>`;
+    return;
+  }
+
+  const rows = attempts.map(a => {
+    const analysis = computeAnalysis(exam, a.scores);
+    const secPoints = id => {
+      const sec = analysis.sections.find(x => x.id === id);
+      if (!sec || sec.points === null) return "—";
+      // 部分录入时该部分是折算值，用 ≈ 标记
+      return (sec.enteredCount < sec.types.length ? "≈" : "") + fmt1(sec.points);
+    };
+    return `<tr>
+      <td class="date">${esc(a.date)}</td>
+      <td class="num">${fmt0(analysis.composite)}</td>
+      <td class="num sec-col">${secPoints("listening")}</td>
+      <td class="num sec-col">${secPoints("reading")}</td>
+      <td class="num sec-col">${secPoints("writing")}</td>
+      <td class="num sec-col">${secPoints("translation")}</td>
+      <td class="actions"><button type="button" class="link-danger" data-del="${esc(a.id)}">删除</button></td>
+    </tr>`;
+  }).join("");
+
+  historyBody.innerHTML = `
+    <div class="table-wrap">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th class="num">总分</th>
+            <th class="num sec-col">听力</th>
+            <th class="num sec-col">阅读</th>
+            <th class="num sec-col">写作</th>
+            <th class="num sec-col">翻译</th>
+            <th class="actions"></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function deleteAttempt(attemptId) {
+  const s = activeStudent();
+  if (!s) return;
+  const list = s.attempts[store.activeExam];
+  const idx = list.findIndex(a => a.id === attemptId);
+  if (idx < 0) return;
+  const attempt = list[idx];
+  if (!confirm(`删除 ${attempt.date} 的这条记录？`)) return;
+
+  list.splice(idx, 1);
+  persist();
+  clearPrintReport();
+  renderHistory();
+  renderWeak();
+  renderChart();
+  updatePrintButton();
+  showToast("记录已删除");
+}
+
+/* ============================================================
+   10. 薄弱项追踪
+   ============================================================ */
+function computeWeakRows(exam, attempts) {
+  const sorted = sortAttempts(attempts, "desc");
+  const rows = [];
+
+  exam.sections.forEach(sec => {
+    sec.types.forEach(t => {
+      const recorded = [];
+      sorted.forEach(a => {
+        const value = scoreOf(a.scores ? a.scores[t.id] : null, t.max);
+        if (value === null) return;
+        recorded.push(clamp(value / t.max, 0, 1));
+      });
+
+      const total = recorded.length;
+      const passed = recorded.filter(acc => acc >= t.target).length;
+
+      // 只统计最近连续有记录的尝试；中途缺记录会中断连续
+      let streak = 0;
+      for (const a of sorted) {
+        const value = scoreOf(a.scores ? a.scores[t.id] : null, t.max);
+        if (value === null) break;
+        const acc = clamp(value / t.max, 0, 1);
+        if (acc < t.target) streak++;
+        else break;
+      }
+
+      rows.push({
+        section: sec, type: t, total, passed,
+        rate: total ? passed / total : null,
+        streak, flagged: streak >= 3
+      });
+    });
+  });
+
+  return rows;
+}
+
+function renderWeak() {
+  const s = activeStudent();
+  if (!s) {
+    weakBody.innerHTML = `<div class="empty-state"><strong>暂无追踪数据</strong>保存记录后自动统计。</div>`;
+    return;
+  }
+
+  const exam = activeExam();
+  const attempts = s.attempts[store.activeExam];
+  if (!attempts.length) {
+    weakBody.innerHTML = `<div class="empty-state"><strong>还没有记录</strong>至少保存一次模考后开始追踪。</div>`;
+    return;
+  }
+
+  const rows = computeWeakRows(exam, attempts);
+  const flagged = rows.filter(r => r.flagged).length;
+
+  const summary = flagged
+    ? `<span class="red">${flagged} 项</span>已连续 3 次以上低于目标，建议优先处理。`
+    : "暂无连续 3 次低于目标的题型。";
+
+  const list = rows.map(r => `
+    <div class="weak-row ${r.flagged ? "flagged" : ""}">
+      <div>
+        <div class="weak-title">
+          <span>${esc(r.type.name)}</span>
+          <span class="tag">${esc(r.section.name)}</span>
+          ${r.flagged ? `<span class="weak-flag">连续 ${r.streak} 次低于目标</span>` : ""}
+        </div>
+        <div class="weak-meter"><span style="width:${r.rate === null ? 0 : (r.rate * 100).toFixed(1)}%"></span></div>
+      </div>
+      <div class="weak-rate">
+        <strong>${r.rate === null ? "—" : pctText(r.rate)}</strong>
+        <span>${r.passed}/${r.total}</span>
+      </div>
+    </div>`).join("");
+
+  weakBody.innerHTML = `<p class="weak-summary">${summary}</p><div class="weak-list">${list}</div>`;
+}
+
+/* ============================================================
+   11. 趋势图（原生 SVG）
+   ============================================================ */
+const MONO_FONT = 'ui-monospace, SFMono-Regular, Consolas, monospace';
+const SANS_FONT = 'PingFang SC, Microsoft YaHei, sans-serif';
+
+function metricDef(key) {
+  const exam = activeExam();
+  if (key === "composite") {
+    return {
+      key, label: "总分", max: 710, yMax: 710,
+      target: fullTargetComposite(exam),
+      getValue: analysis => analysis.composite,
+      format: fmt0
+    };
+  }
+
+  const sec = exam.sections.find(s => s.id === key) || exam.sections[0];
+  const max = sec.weight * CONFIG.total;
+  return {
+    key: sec.id, label: sec.name, max, yMax: 710,
+    target: max * sectionTarget(sec),
+    getValue: analysis => {
+      const target = analysis.sections.find(s => s.id === sec.id);
+      return target ? target.points : null;
+    },
+    format: fmt1
+  };
+}
+
+/* 生成趋势图 SVG。theme: dark 屏幕 / light 打印 */
+function trendSVG(points, options) {
+  const {
+    width, height, max, target, label,
+    theme = "dark", interactive = false
+  } = options;
+
+  const colors = theme === "light" ? {
+    grid: "#E2EAE5", axis: "#A9B8B0", text: "#5C6B63",
+    line: "#2F6F5B", point: "#2F6F5B", pointStroke: "#FFFFFF",
+    target: "#9A7B3F", area: "rgba(47, 111, 91, .07)", label: "#2F6F5B"
+  } : {
+    grid: "#1C2C24", axis: "#40544A", text: "#7E9188",
+    line: "#6FC4A4", point: "#6FC4A4", pointStroke: "#0A1210",
+    target: "#9AA89F", area: "rgba(111, 196, 164, .08)", label: "#6FC4A4"
+  };
+
+  const margin = { top: 26, right: 18, bottom: 34, left: 46 };
+  const plotW = Math.max(10, width - margin.left - margin.right);
+  const plotH = Math.max(10, height - margin.top - margin.bottom);
+  const xAt = i => margin.left + (points.length === 1 ? plotW / 2 : plotW * i / (points.length - 1));
+  const yAt = value => margin.top + plotH * (1 - clamp(value, 0, max) / max);
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(label)}趋势图" style="width:100%;height:auto;display:block">`;
+
+  // 水平网格与 Y 轴刻度
+  for (let i = 0; i <= 4; i++) {
+    const value = max * i / 4;
+    const y = yAt(value);
+    svg += `<line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="${colors.grid}" stroke-width="1"/>`;
+    svg += `<text x="${margin.left - 8}" y="${y + 3.5}" text-anchor="end" font-family="${MONO_FONT}" font-size="9.5" fill="${colors.text}">${Math.round(value)}</text>`;
+  }
+
+  // 目标线
+  if (Number.isFinite(target) && target > 0 && target <= max) {
+    const ty = yAt(target);
+    svg += `<line x1="${margin.left}" y1="${ty}" x2="${width - margin.right}" y2="${ty}" stroke="${colors.target}" stroke-width="1" stroke-dasharray="4 4" opacity=".8"/>`;
+    svg += `<text x="${width - margin.right}" y="${Math.max(14, ty - 5)}" text-anchor="end" font-family="${MONO_FONT}" font-size="8.5" fill="${colors.target}">目标 ${Math.round(target)}</text>`;
+  }
+
+  // X 轴日期标签
+  const maxLabels = Math.max(2, Math.floor(plotW / 76));
+  const step = Math.max(1, Math.ceil(points.length / maxLabels));
+  points.forEach((p, i) => {
+    if (i % step !== 0 && i !== points.length - 1) return;
+    const x = xAt(i);
+    const anchor = points.length === 1 ? "middle" : i === 0 ? "start" : i === points.length - 1 ? "end" : "middle";
+    const dateLabel = typeof p.date === "string" && p.date.length >= 10 ? p.date.slice(5) : p.date;
+    svg += `<text x="${x}" y="${height - 11}" text-anchor="${anchor}" font-family="${MONO_FONT}" font-size="8.5" fill="${colors.text}">${esc(dateLabel)}</text>`;
+  });
+
+  // 面积与折线
+  if (points.length > 1) {
+    const line = points.map((p, i) => `${i ? "L" : "M"} ${xAt(i).toFixed(2)} ${yAt(p.value).toFixed(2)}`).join(" ");
+    const baseline = margin.top + plotH;
+    const area = `M ${xAt(0).toFixed(2)} ${baseline} ` +
+      points.map((p, i) => `L ${xAt(i).toFixed(2)} ${yAt(p.value).toFixed(2)}`).join(" ") +
+      ` L ${xAt(points.length - 1).toFixed(2)} ${baseline} Z`;
+    svg += `<path d="${area}" fill="${colors.area}" stroke="none"/>`;
+    svg += `<path d="${line}" fill="none" stroke="${colors.line}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+
+  // 数据点
+  points.forEach((p, i) => {
+    const x = xAt(i), y = yAt(p.value);
+    const attrs = interactive
+      ? ` tabindex="0" role="button" data-idx="${i}" aria-label="${esc(p.date)} ${esc(p.label || "")}" style="cursor:pointer"`
+      : "";
+    svg += `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${interactive ? 4.2 : 3.4}" fill="${colors.point}" stroke="${colors.pointStroke}" stroke-width="1.6"${attrs}></circle>`;
+  });
+
+  // 左上角指标名
+  svg += `<text x="${margin.left}" y="15" font-family="${SANS_FONT}" font-size="10" fill="${colors.label}">${esc(label)}</text>`;
+  svg += `</svg>`;
+  return svg;
+}
+
+function updateMetricButtons() {
+  $$(".metric-btn").forEach(btn => {
+    const on = btn.dataset.metric === chartMetric;
+    btn.classList.toggle("is-active", on);
+    btn.setAttribute("aria-pressed", String(on));
+  });
+}
+
+function hideChartTip() {
+  const tip = $("#chart-tooltip");
+  if (tip) tip.hidden = true;
+}
+
+function showChartTip(index, element) {
+  const point = chartPoints[index];
+  const tip = $("#chart-tooltip");
+  const wrap = $("#chart-wrap");
+  if (!point || !tip || !wrap) return;
+
+  tip.textContent = point.label;
+  tip.hidden = false;
+
+  const wrapRect = wrap.getBoundingClientRect();
+  const rect = element.getBoundingClientRect();
+  const left = clamp(rect.left - wrapRect.left + rect.width / 2, 80, wrapRect.width - 80);
+  const top = Math.max(26, rect.top - wrapRect.top);
+  tip.style.left = left + "px";
+  tip.style.top = top + "px";
+}
+
+function bindChartTooltip() {
+  const circles = $$("circle[data-idx]", chartCanvas);
+  circles.forEach(circle => {
+    const index = Number(circle.dataset.idx);
+    circle.addEventListener("pointerenter", () => { if (!chartPinned) showChartTip(index, circle); });
+    circle.addEventListener("pointerleave", () => { if (!chartPinned) hideChartTip(); });
+    circle.addEventListener("focus", () => { if (!chartPinned) showChartTip(index, circle); });
+    circle.addEventListener("blur", () => { if (!chartPinned) hideChartTip(); });
+    circle.addEventListener("click", event => {
+      event.stopPropagation();
+      if (chartPinned && chartPinnedIndex === index) {
+        chartPinned = false;
+        chartPinnedIndex = null;
+        hideChartTip();
+      } else {
+        chartPinned = true;
+        chartPinnedIndex = index;
+        showChartTip(index, circle);
+      }
+    });
+  });
+}
+
+function renderChart() {
+  const sub = $("#chart-sub");
+  const s = activeStudent();
+  chartPinned = false;
+  chartPinnedIndex = null;
+  hideChartTip();
+
+  if (!s) {
+    chartCanvas.innerHTML = `<div class="empty-state"><strong>暂无趋势</strong>选择学生并保存记录后显示。</div>`;
+    sub.textContent = "按记录顺序 · 虚线为目标线";
+    return;
+  }
+
+  const exam = activeExam();
+  const attempts = sortAttempts(s.attempts[store.activeExam], "asc");
+  const def = metricDef(chartMetric);
+  const points = [];
+
+  attempts.forEach(a => {
+    const analysis = computeAnalysis(exam, a.scores);
+    const value = def.getValue(analysis);
+    if (value === null || value === undefined || !Number.isFinite(value)) return;
+    points.push({
+      date: a.date,
+      value,
+      label: `${a.date} · ${def.label} ${def.format(value)}`
+    });
+  });
+
+  chartPoints = points;
+
+  if (!points.length) {
+    chartCanvas.innerHTML = `<div class="empty-state"><strong>暂无可绘制的数据</strong>保存至少一次记录后显示趋势。</div>`;
+    sub.textContent = `${def.label} · 暂无记录`;
+    return;
+  }
+
+  const width = Math.max(280, Math.floor(chartCanvas.getBoundingClientRect().width) || 640);
+  const height = width < 560 ? 250 : 310;
+
+  chartCanvas.innerHTML = trendSVG(points, {
+    width, height, max: def.yMax, target: def.target,
+    label: def.label, theme: "dark", interactive: true
+  });
+
+  sub.textContent = `${def.label}${chartMetric === "composite" ? "" : ` · 满分 ${fmt1(def.max)}`} · ${points.length} 次记录 · 虚线为目标 · 按记录顺序`;
+  bindChartTooltip();
+}
+
+/* ============================================================
+   12. 打印报告
+   ============================================================ */
+function updatePrintButton() {
+  const s = activeStudent();
+  let enabled = false;
+
+  if (s) {
+    const attempts = sortAttempts(s.attempts[store.activeExam], "asc");
+    if (attempts.length) {
+      const latest = attempts[attempts.length - 1];
+      const analysis = computeAnalysis(activeExam(), latest.scores);
+      enabled = Number.isFinite(analysis.composite);
+    }
+  }
+
+  $("#print-btn").disabled = !enabled;
+}
+
+function buildReportHTML({ student, exam, analysis, attempts, latest }) {
+  const gap = gapInfo(analysis.targetComposite - analysis.composite);
+
+  const sectionRows = analysis.sections.map(sec => `
+    <tr>
+      <td>${esc(sec.name)}</td>
+      <td class="num">${sec.points === null ? "—" : (sec.enteredCount < sec.types.length ? "≈" : "") + fmt1(sec.points)}</td>
+      <td class="num">${fmt1(sec.maxPoints)}</td>
+      <td class="num">${sec.points === null ? "—" : pctText(sec.points / sec.maxPoints)}</td>
+      <td class="num">${fmt1(sec.targetPoints)}</td>
+    </tr>`).join("");
+
+  const recs = analysis.candidates.slice(0, 4);
+  const recHTML = recs.length ? `<ol class="report-recs">${recs.map((c, i) => `
+    <li>
+      <div class="rr-head">
+        <strong>${i + 1}. ${esc(c.name)}（${esc(c.section)}）</strong>
+        <em>+${fmt1(c.gain)} 分</em>
+      </div>
+      <p class="rr-meta">当前 ${pctText(c.acc)} → 目标 ${pctText(c.target)}</p>
+      <p class="rr-tip">${esc(c.tip)}</p>
+    </li>`).join("")}</ol>` : `<p class="report-empty">本次录入的题型均已达到目标线。</p>`;
+
+  const trendPoints = sortAttempts(attempts, "asc").map(a => {
+    const an = computeAnalysis(exam, a.scores);
+    return { date: a.date, value: an.composite, label: "" };
+  }).filter(p => Number.isFinite(p.value));
+
+  const chart = trendPoints.length
+    ? trendSVG(trendPoints, {
+        width: 720, height: 170,
+        max: 710, target: fullTargetComposite(exam),
+        label: "总分", theme: "light", interactive: false
+      })
+    : `<p class="report-empty">暂无趋势数据。</p>`;
+
+  return `
+    <div class="report">
+      <div class="report-top">
+        <span class="report-brand">CET SCORE CLINIC · 模考诊断报告</span>
+        <span>生成日期 ${todayISO()} · ${esc(exam.label)}</span>
+      </div>
+      <h1>${esc(student.name)} · ${esc(exam.label)} 模考诊断</h1>
+      <p class="report-coverage">已录入 ${analysis.enteredCount}/${analysis.totalTypes} 项${analysis.coverage < 0.999 ? " · 综合分按已录入权重折算" : ""}</p>
+      ${student.note ? `<p class="report-note">备注：${esc(student.note)}</p>` : ""}
+      <div class="report-summary">
+        <div><span>综合估分</span><strong>${fmt0(analysis.composite)}</strong><em>/ 710</em></div>
+        <div><span>目标线</span><strong>${fmt0(analysis.targetComposite)}</strong><em>分</em></div>
+        <div><span>差距</span><strong>${gap.prefix ? `${gap.prefix} ${gap.value}` : "0"}</strong><em>分</em></div>
+        <div><span>记录日期</span><strong style="font-size:11pt">${esc(latest.date)}</strong></div>
+      </div>
+      <h2>各部分得分</h2>
+      <table class="report-table">
+        <thead>
+          <tr><th>部分</th><th class="num">得分</th><th class="num">满分</th><th class="num">得分率</th><th class="num">目标分</th></tr>
+        </thead>
+        <tbody>${sectionRows}</tbody>
+      </table>
+      ${analysis.sections.some(sec => sec.points !== null && sec.enteredCount < sec.types.length)
+        ? `<p class="report-table-note">≈ 表示该部分有题型未录入，分数为已得部分；综合分按已录入权重折算。</p>`
+        : ""}
+      <h2>优先补强（按可追回分数排序）</h2>
+      ${recHTML}
+      <h2>总分趋势</h2>
+      <div class="report-chart">${chart}</div>
+      <p class="report-foot">数据仅保存在本机浏览器 · 由 CET Score Clinic 生成</p>
+    </div>`;
+}
+
+function clearPrintReport() {
+  const el = $("#print-report");
+  if (el) el.innerHTML = "";
+}
+
+function prepareReport() {
+  const el = $("#print-report");
+  if (el) el.innerHTML = "";
+
+  const s = activeStudent();
+  if (!s) return false;
+
+  const attempts = sortAttempts(s.attempts[store.activeExam], "asc");
+  if (!attempts.length) return false;
+
+  const exam = activeExam();
+  const latest = attempts[attempts.length - 1];
+  const analysis = computeAnalysis(exam, latest.scores);
+  if (!Number.isFinite(analysis.composite)) return false;
+
+  if (el) {
+    el.innerHTML = buildReportHTML({ student: s, exam, analysis, attempts, latest });
+  }
+  return true;
+}
+
+function generateReport() {
+  if (!activeStudent()) return;
+  if (!prepareReport()) {
+    showToast("还没有可生成报告的记录", "error");
+    return;
+  }
+
+  // 等一帧，确保报告节点与图表完成布局后再调起打印
+  requestAnimationFrame(() => window.print());
+}
+
+/* ============================================================
+   13. 全局刷新
+   ============================================================ */
+function renderExamButtons() {
+  $$(".exam-btn").forEach(btn => {
+    const on = btn.dataset.exam === store.activeExam;
+    btn.classList.toggle("is-active", on);
+    btn.setAttribute("aria-pressed", String(on));
+  });
+}
+
+function renderAll() {
+  clearPrintReport();
+  renderStudentBar();
+  renderExamButtons();
+  updateMetricButtons();
+  renderEntry();
+  renderDiagnosis();
+  renderHistory();
+  renderWeak();
+  renderChart();
+  updatePrintButton();
+}
+
+/* ============================================================
+   14. 事件绑定与启动
+   ============================================================ */
+$("#student-select").addEventListener("change", event => switchStudent(event.target.value));
+$("#new-student").addEventListener("click", () => openStudentDialog(null));
+$("#edit-student").addEventListener("click", () => {
+  const s = activeStudent();
+  if (s) openStudentDialog(s.id);
+});
+$("#delete-student").addEventListener("click", deleteActiveStudent);
+$("#student-form").addEventListener("submit", submitStudentForm);
+$$("#student-dialog [data-close]").forEach(btn => {
+  btn.addEventListener("click", () => $("#student-dialog").close());
+});
+$("#student-dialog").addEventListener("click", event => {
+  if (event.target === $("#student-dialog")) $("#student-dialog").close();
+});
+
+$$(".exam-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (store.activeExam === btn.dataset.exam) return;
+    store.activeExam = btn.dataset.exam;
+    persist();
+    resetDraftDate();
+    renderAll();
+  });
+});
+
+entryBody.addEventListener("input", event => {
+  if (!event.target.closest("input[data-type]")) return;
+  refreshDraft();
+});
+
+entryBody.addEventListener("change", event => {
+  const inp = event.target.closest("input[data-type]");
+  if (!inp) return;
+  if (inp.value.trim() !== "") {
+    const max = Number(inp.dataset.max);
+    let n = Number(inp.value);
+    if (!Number.isFinite(n)) n = 0;
+    n = clamp(n, 0, max);
+    if (max !== 15) n = Math.round(n);
+    inp.value = String(n);
+  }
+  refreshDraft();
+});
+
+entryBody.addEventListener("keydown", event => {
+  if (event.key !== "Enter") return;
+  const inp = event.target.closest("input[data-type]");
+  if (!inp) return;
+  event.preventDefault();
+  const all = $$("input[data-type]", entryBody);
+  const index = all.indexOf(inp);
+  if (index > -1 && index < all.length - 1) all[index + 1].focus();
+  else inp.blur();
+});
+
+entryBody.addEventListener("click", event => {
+  if (event.target.closest("[data-action='new-student']")) openStudentDialog(null);
+});
+
+$("#save-attempt").addEventListener("click", saveAttempt);
+$("#clear-entry").addEventListener("click", clearEntry);
+$("#attempt-date").addEventListener("change", event => {
+  if (isValidDate(event.target.value)) draftDate = event.target.value;
+});
+
+historyBody.addEventListener("click", event => {
+  const btn = event.target.closest("[data-del]");
+  if (btn) deleteAttempt(btn.dataset.del);
+});
+
+$$(".metric-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    chartMetric = btn.dataset.metric;
+    updateMetricButtons();
+    renderChart();
+  });
+});
+
+$("#print-btn").addEventListener("click", generateReport);
+// 浏览器自带打印（Ctrl+P）时，也按当前学生重新生成报告，避免打印到旧学生数据
+window.addEventListener("beforeprint", prepareReport);
+
+document.addEventListener("click", () => {
+  if (chartPinned) {
+    chartPinned = false;
+    chartPinnedIndex = null;
+    hideChartTip();
+  }
+});
+
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(renderChart, 160);
+});
+
+// 启动
+$("#attempt-date").value = draftDate;
+renderAll();
+if (!storageAvailable) markStorageUnavailable();
+</script>
+</body>
+</html>
