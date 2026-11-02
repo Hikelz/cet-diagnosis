@@ -296,6 +296,26 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition: none !important; animation: none !important; }
   }
+  .history-panel { margin-top: 24px; }
+  #brand-logo { width: 36px; height: 36px; border-radius: 9px; object-fit: cover; margin-right: 12px; }
+  .hist-list { display: flex; flex-direction: column; }
+  .hist-row {
+    display: grid; grid-template-columns: 1fr auto auto auto; gap: 14px; align-items: baseline;
+    width: 100%; text-align: left; background: transparent; border: 0;
+    border-top: 1px solid var(--line-soft); padding: 11px 4px;
+    color: var(--paper); font: inherit; cursor: pointer;
+    transition: background-color .15s ease;
+  }
+  .hist-row:hover { background: var(--brass-soft); }
+  .hist-date { color: var(--dim); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .hist-score { font-family: var(--serif); font-size: 21px; font-variant-numeric: tabular-nums; }
+  .hist-cov { color: var(--faint); font-size: 12px; }
+  .hist-delta { font-size: 12px; font-variant-numeric: tabular-nums; }
+  .hist-delta.up { color: var(--teal); }
+  .hist-delta.down { color: var(--rust); }
+  .hist-empty { color: var(--faint); font-size: 13px; padding: 12px 0 4px; }
+  .btn.danger { color: var(--rust); border-color: rgba(206, 123, 100, .38); }
+  .btn.danger:hover { border-color: var(--rust); color: var(--paper); }
 </style>
 </head>
 <body>
@@ -303,8 +323,11 @@
 
   <header class="topbar">
     <div class="brand">
-      <p class="eyebrow">CET Score Clinic · 710</p>
-      <h1>四六级分数诊断台</h1>
+      <img id="brand-logo" alt="" hidden>
+      <div>
+        <p class="eyebrow" id="brand-sub">CET Score Clinic · 710</p>
+        <h1 id="brand-name">四六级分数诊断台</h1>
+      </div>
     </div>
     <div class="controls">
       <div class="exam-switch" role="group" aria-label="选择考试类型">
@@ -366,6 +389,23 @@
       <div id="diag-body"></div>
     </section>
   </main>
+
+  <section class="panel history-panel" aria-labelledby="history-title">
+    <div class="panel-head">
+      <div>
+        <p class="eyebrow">03 · History</p>
+        <h2 id="history-title">历史记录</h2>
+      </div>
+      <div class="panel-actions">
+        <button type="button" class="btn" id="export-btn">导出</button>
+        <button type="button" class="btn" id="import-btn">导入</button>
+        <button type="button" class="btn danger" id="wipe-btn">清空记录</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+      </div>
+    </div>
+    <p class="panel-hint">只保存在这台设备的浏览器里，不上传。点任意一条，可以把它填回左侧重新看。</p>
+    <div id="history-body"></div>
+  </section>
 
   <footer class="footer">
     <p class="config-note">权重、目标正确率和训练建议都在源码顶部的 <code>CONFIG</code> 里；改数值即可，不用动逻辑。各部分权重合计应为 100%，题型权重合计应等于所属部分。</p>
@@ -485,6 +525,173 @@ const CONFIG = {
     }
   }
 };
+
+/* ============================================================
+   品牌配置 —— 换一家机构只改这一块（或用 ?brand=xxx）
+   ============================================================ */
+
+const BRANDS = {
+  default: {
+    name: "四六级分数诊断台",
+    sub: "CET Score Clinic · 710",
+    logoUrl: "",
+    colors: {
+      brass: "#D8A94E",
+      brassHi: "#EAC57E",
+      bg: "#0A1016",
+      panel: "#101922"
+    }
+  },
+  /* 换皮示例：同一份文件，用 index.html?brand=demo 打开就是这套 */
+  demo: {
+    name: "星火英语 · 分数诊断台",
+    sub: "XINGHUO · CET SCORE CLINIC",
+    logoUrl: "",
+    colors: {
+      brass: "#C8553D",
+      brassHi: "#E58B72",
+      bg: "#0B0F14",
+      panel: "#121A21"
+    }
+  }
+};
+
+const BRAND_KEY = (new URLSearchParams(location.search).get("brand") || "default").toLowerCase();
+const BRAND = BRANDS[BRAND_KEY] || BRANDS.default;
+
+function applyBrand(b) {
+  const nameEl = document.getElementById("brand-name");
+  const subEl = document.getElementById("brand-sub");
+  if (nameEl) nameEl.textContent = b.name;
+  if (subEl) subEl.textContent = b.sub;
+  document.title = b.name;
+
+  if (b.colors) {
+    const root = document.documentElement.style;
+    if (b.colors.brass) root.setProperty("--brass", b.colors.brass);
+    if (b.colors.brassHi) root.setProperty("--brass-hi", b.colors.brassHi);
+    if (b.colors.bg) root.setProperty("--bg", b.colors.bg);
+    if (b.colors.panel) root.setProperty("--panel", b.colors.panel);
+  }
+
+  const logo = document.getElementById("brand-logo");
+  if (logo) {
+    if (b.logoUrl) { logo.src = b.logoUrl; logo.hidden = false; }
+    else { logo.hidden = true; }
+  }
+}
+
+/* ============================================================
+   本地存档 —— 只存原始分数，总分每次重算
+   ============================================================ */
+
+const STORE_KEY = `cet-diagnosis:v1:${BRAND_KEY}`;
+const HISTORY_MAX = 30;
+
+function emptyStore() {
+  return { v: 1, brand: BRAND_KEY, exams: { cet4: [], cet6: [] } };
+}
+
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return emptyStore();
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== "object" || !data.exams) return emptyStore();
+    for (const id of ["cet4", "cet6"]) {
+      if (!Array.isArray(data.exams[id])) data.exams[id] = [];
+      data.exams[id] = data.exams[id]
+        .filter(r => r && typeof r.ts === "number" && r.scores && typeof r.scores === "object")
+        .sort((a, b) => a.ts - b.ts)
+        .slice(-HISTORY_MAX);
+    }
+    return data;
+  } catch (err) {
+    console.warn("[CET store]", err);
+    return emptyStore();
+  }
+}
+
+let store = loadStore();
+
+function saveStore() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+  catch (err) { console.warn("[CET store] 写入失败", err); }
+}
+
+function currentScores() {
+  const out = {};
+  for (const [key, raw] of Object.entries(state.entries[state.exam] || {})) {
+    const val = readEntry(raw);
+    if (val !== null) out[key] = val;
+  }
+  return out;
+}
+
+function persistCurrent() {
+  const scores = currentScores();
+  const examId = state.exam;
+  const list = store.exams[examId];
+  if (!Object.keys(scores).length) return;
+
+  const last = list[list.length - 1];
+  const same = last && Date.now() - last.ts < 60 * 1000 &&
+    JSON.stringify(last.scores) === JSON.stringify(scores);
+
+  if (same) {
+    last.ts = Date.now();
+  } else {
+    list.push({ ts: Date.now(), scores });
+    while (list.length > HISTORY_MAX) list.shift();
+  }
+  saveStore();
+  renderHistory();
+}
+
+let saveTimer = 0;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(persistCurrent, 800);
+}
+
+function fmtStamp(ts) {
+  const d = new Date(ts);
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function renderHistory() {
+  const box = document.getElementById("history-body");
+  if (!box) return;
+
+  const list = store.exams[state.exam].slice().reverse();
+  if (!list.length) {
+    box.innerHTML = `<p class="hist-empty">还没有记录。录入一组分数，它会自动存下来。</p>`;
+    return;
+  }
+
+  let prev = null;
+  const rows = list.map(rec => {
+    const r = computeDiagnosis(CONFIG, state.exam, rec.scores);
+    let delta = "";
+    if (prev && prev.composite !== null && r.composite !== null) {
+      const diff = Math.round(r.composite) - Math.round(prev.composite);
+      if (diff !== 0) {
+        delta = `<span class="hist-delta ${diff > 0 ? "up" : "down"}">${diff > 0 ? "+" : ""}${diff}</span>`;
+      }
+    }
+    prev = r;
+    const score = r.composite === null ? "—" : String(Math.round(r.composite));
+    return `<button type="button" class="hist-row" data-ts="${rec.ts}">
+      <span class="hist-date">${fmtStamp(rec.ts)}</span>
+      <span class="hist-score">${score}</span>
+      <span class="hist-cov">覆盖 ${Math.round(r.coverage * 100)}%</span>
+      ${delta || `<span class="hist-delta"></span>`}
+    </button>`;
+  }).join("");
+
+  box.innerHTML = `<div class="hist-list">${rows}</div>`;
+}
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
@@ -831,6 +1038,7 @@ function loadSample() {
   state.entries[state.exam] = { ...CONFIG.exams[state.exam].sample };
   renderEntry();
   updateAll();
+  scheduleSave();
 }
 
 function clearEntries() {
@@ -845,6 +1053,7 @@ entryBody.addEventListener("input", e => {
   state.entries[state.exam][inp.dataset.type] = inp.value;
   syncPills();
   updateAll();
+  scheduleSave();
 });
 
 entryBody.addEventListener("change", e => {
@@ -862,6 +1071,7 @@ entryBody.addEventListener("change", e => {
   }
   syncPills();
   updateAll();
+  scheduleSave();
 });
 
 entryBody.addEventListener("keydown", e => {
@@ -885,6 +1095,7 @@ document.querySelectorAll(".exam-switch button").forEach(btn => {
     renderEntry();
     buildRuler();
     updateAll();
+    renderHistory();
   });
 });
 
@@ -915,6 +1126,80 @@ buildScale();
 renderEntry();
 buildRuler();
 updateAll();
+
+/* ---------- brand & history wiring ---------- */
+
+applyBrand(BRAND);
+
+document.getElementById("history-body").addEventListener("click", e => {
+  const row = e.target.closest(".hist-row");
+  if (!row) return;
+  const ts = Number(row.dataset.ts);
+  const rec = store.exams[state.exam].find(r => r.ts === ts);
+  if (!rec) return;
+  state.entries[state.exam] = { ...rec.scores };
+  renderEntry();
+  updateAll();
+});
+
+document.getElementById("export-btn").addEventListener("click", () => {
+  const d = new Date();
+  const p = n => String(n).padStart(2, "0");
+  const name = `cet-scores-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}.json`;
+  const blob = new Blob([JSON.stringify(store, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+});
+
+document.getElementById("import-btn").addEventListener("click", () => {
+  document.getElementById("import-file").click();
+});
+
+document.getElementById("import-file").addEventListener("change", e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(String(reader.result));
+      if (!data || !data.exams) throw new Error("文件里没有 exams 字段");
+      const merged = emptyStore();
+      for (const id of ["cet4", "cet6"]) {
+        const incoming = Array.isArray(data.exams[id]) ? data.exams[id] : [];
+        const seen = new Set();
+        const all = [...store.exams[id], ...incoming]
+          .filter(r => r && typeof r.ts === "number" && r.scores)
+          .sort((a, b) => a.ts - b.ts)
+          .filter(r => (seen.has(r.ts) ? false : (seen.add(r.ts), true)));
+        merged.exams[id] = all.slice(-HISTORY_MAX);
+      }
+      store = merged;
+      saveStore();
+      renderHistory();
+      alert(`导入完成：CET-4 ${store.exams.cet4.length} 条，CET-6 ${store.exams.cet6.length} 条。`);
+    } catch (err) {
+      alert("导入失败：" + err.message);
+    }
+    e.target.value = "";
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById("wipe-btn").addEventListener("click", () => {
+  const n = store.exams.cet4.length + store.exams.cet6.length;
+  if (!n) { alert("还没有记录。"); return; }
+  if (!confirm(`确定清空这台设备上的全部 ${n} 条记录？不可恢复。`)) return;
+  store = emptyStore();
+  saveStore();
+  renderHistory();
+});
+
+renderHistory();
 </script>
 <footer style="max-width:980px;margin:30px auto 44px;padding:0 20px;text-align:center;font-family:'Songti SC','SimSun',serif;font-size:12px;line-height:1.9;color:#9a8b73;letter-spacing:.04em;">
   CET 诊断原型 · by <a href="https://github.com/Hikelz" style="color:#c9a15c;text-decoration:none;">Hikelz</a> · 2026
